@@ -110,8 +110,7 @@ static void main_task(void*);
 /* Other functions */
 static inline void fail(void);
 
-extern void uart_dump_samples(void*, size_t);
-
+extern void edma_test(void*);
 /* == Global Variables == */
 /* Handles */
 MMWave_Handle gMmwHandle = NULL;
@@ -186,8 +185,8 @@ static void main_task(void *args){
 
         // move the samples to HWA input
         edma_write();
-        SemaphoreP_pend(&gEdmaDoneSem, SystemP_WAIT_FOREVER);
-
+  //      SemaphoreP_pend(&gEdmaDoneSem, SystemP_WAIT_FOREVER);
+        while(1) __asm__("wfi");
         hwa_run(gHwaHandle[0]);
         SemaphoreP_pend(&gHwaDoneSem, SystemP_WAIT_FOREVER);
 
@@ -217,10 +216,10 @@ static void main_task(void *args){
 static void init_task(void *args){
     int32_t err = 0;
     int32_t ret = 0;
+    HWA_SrcDMAConfig dmacfg;
 
     Drivers_open();
     Board_driversOpen(); 
-
 
     DebugP_log("Init task launched\r\n");
 
@@ -260,7 +259,8 @@ static void init_task(void *args){
 
     // and EDMA
     DebugP_log("Init edma...\r\n");
-    edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
+ //   edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
+    edma_init(&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE);    
     DebugP_log("Done.\r\n");
 
 
@@ -386,7 +386,18 @@ int main(void) {
     /* init SOC specific modules */
     System_init();
     Board_init();
-
+#define EDMA_TEST
+#ifdef EDMA_TEST
+   gInitTask = xTaskCreateStatic(
+            edma_test,   
+            "init task", 
+            INIT_TASK_SIZE,
+            NULL,           
+            INIT_TASK_PRI,  
+            gInitTaskStack, 
+            &gInitTaskObj); 
+    configASSERT(gInitTask != NULL);
+#else
     /* Create this at 2nd highest priority to initialize everything
      * the MMWave_execute task must have a higher priority than this */
    gInitTask = xTaskCreateStatic(
@@ -398,6 +409,7 @@ int main(void) {
             gInitTaskStack, 
             &gInitTaskObj); 
     configASSERT(gInitTask != NULL);
+#endif
     vTaskStartScheduler();
 
     DebugP_assertNoLog(0);

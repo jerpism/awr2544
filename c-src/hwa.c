@@ -19,7 +19,8 @@ static HWA_CommonConfig HwaCommonConfig[1] =
 static HWA_ParamConfig HwaParamConfig[1] =
 {
     {
-		.triggerMode = HWA_TRIG_MODE_SOFTWARE,
+		.triggerMode = HWA_TRIG_MODE_DMA,
+        .triggerSrc = 0,
 		.accelMode = HWA_ACCELMODE_FFT,
 		.source =
         {
@@ -99,8 +100,11 @@ uint32_t hwa_getaddr(HWA_Handle handle){
 void hwa_init(HWA_Handle handle,  HWA_Done_IntHandlerFuncPTR cb){
     HWA_configCommon(handle, &HwaCommonConfig[0]);
     HWA_configParamSet(handle, 0, &HwaParamConfig[0], NULL);
-    HWA_enableDoneInterrupt(handle, 0,  cb, NULL);
+    if(cb != NULL){
+        HWA_enableDoneInterrupt(handle, 0,  cb, NULL);
+    }
     HWA_enable(handle, 1U);
+    HWA_reset(handle);
 }
 
 void hwa_run(HWA_Handle handle){
