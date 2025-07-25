@@ -145,15 +145,20 @@ void edma_callback(Edma_IntrHandle handle, void *args){
 void hwa_callback(uint32_t threadIdx, void *arg){
   //  SemaphoreP_post(&gHwaDoneSem);
   // TODO: don't blindly guess channel number here but that's a issue for future me
-  EDMA_disableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
-  EDMA_enableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
+
+   // volatile uint32_t * const addr = (uint32_t*)(EDMA_getBaseAddr(gEdmaHandle[0])+0x1010);
+   // *addr = 0b10;
+    printf("HWA said it's done\r\n");
+  //EDMA_disableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
+  EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
 }
 
 static volatile int gChirpCount = 0;
 static void frame_done(Edma_IntrHandle handle, void *args){
-    gChirpCount++;
-    if(gChirpCount >= 128)
-        SemaphoreP_post(&gFrameDoneSem);
+  //  gChirpCount++;
+  //  if(gChirpCount >= 128)
+    printf("Frame transfer is done\r\n");
+  //      SemaphoreP_post(&gFrameDoneSem);
 }
 
 static void exec_task(void *args){
@@ -268,7 +273,7 @@ static void init_task(void *args){
     // and EDMA
     DebugP_log("Init edma...\r\n");
     edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
-    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  (CHIRP_DATASIZE * 2),  128, 1);
+    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  (CHIRP_DATASIZE * 2),  1, 1);
     DebugP_log("Done.\r\n");
 
 

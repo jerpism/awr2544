@@ -32,9 +32,6 @@ void edma_write(){
     *addr = 0b1;
 }
 
-void hwa_cb(uint32_t a, void *arg){
-    EDMA_enableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
-}
 
 void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t acnt, uint16_t bcnt, uint16_t ccnt){
     uint32_t base = 0;
@@ -68,7 +65,7 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
 
     DebugP_log("EDMA: base: %#x, region: %u, ch: %u, tcc: %u, param: %u\r\n",base,region,ch,tcc,param);
 
-    EDMA_configureChannelRegion(base, region, EDMA_CHANNEL_TYPE_DMA, ch, tcc , param, 0);
+    EDMA_configureChannelRegion(base, region, EDMA_CHANNEL_TYPE_DMA, ch, tcc , param, 1);
     EDMA_ccPaRAMEntry_init(&edmaparam);
     edmaparam.srcAddr       = (uint32_t) SOC_virtToPhy(srcp);
     edmaparam.destAddr      = (uint32_t) SOC_virtToPhy(dstp);
@@ -85,7 +82,7 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     edmaparam.destBIdxExt   = (int8_t) EDMA_PARAM_BIDX_EXT(acnt);
     // TODO: figure out what exactly are the required options here 
     // seems to get stuck in something without the interrupts enabled
-    edmaparam.opt |= (EDMA_OPT_TCINTEN_MASK | EDMA_OPT_ITCINTEN_MASK | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
+    edmaparam.opt |= (EDMA_OPT_TCINTEN_MASK | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
     EDMA_setPaRAM(base, param, &edmaparam);
 
     gIntrObjHwaL3.tccNum = tcc;
@@ -93,6 +90,7 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     gIntrObjHwaL3.appData = (void*)0;
     EDMA_registerIntr(gEdmaHandle[0], &gIntrObjHwaL3);
     EDMA_enableEvtIntrRegion(base, region, ch);
+    EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
 
 }
 
