@@ -145,12 +145,15 @@ void edma_callback(Edma_IntrHandle handle, void *args){
 void hwa_callback(uint32_t threadIdx, void *arg){
   //  SemaphoreP_post(&gHwaDoneSem);
   // TODO: don't blindly guess channel number here but that's a issue for future me
+  EDMA_disableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
   EDMA_enableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
 }
 
+static volatile int gChirpCount = 0;
 static void frame_done(Edma_IntrHandle handle, void *args){
-    SemaphoreP_post(&gFrameDoneSem);
-
+    gChirpCount++;
+    if(gChirpCount >= 128)
+        SemaphoreP_post(&gFrameDoneSem);
 }
 
 static void exec_task(void *args){
