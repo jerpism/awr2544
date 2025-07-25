@@ -190,7 +190,7 @@ void edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t
     edmaparam1.destBIdx      = 0U;
     edmaparam1.srcCIdx       = 0U;
     edmaparam1.destCIdx      = 0U;
-    edmaparam1.linkAddr      = EDMA_TPCC_OPT(param); // Link to itself
+    edmaparam1.linkAddr      = EDMA_TPCC_OPT(param1); // Link to itself
     edmaparam1.srcBIdxExt    = 0U;
     edmaparam1.destBIdxExt   = 0U;
     // TODO: figure out what exactly are the required options here 
@@ -204,15 +204,13 @@ void edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t
     uint32_t chainoptions = (EDMA_OPT_TCCHEN_MASK | EDMA_OPT_ITCCHEN_MASK);
     EDMA_chainChannel(base, param, ch1, chainoptions);
 
-    // TODO: these probably don't need to be indexed by region 
-    // since both of the (so far) planned 2 DMA configurations, ADCBUF->HWAIN and HWAOUT->DSS_L3
-    // have differing requirements
+
     gIntrObjAdcHwa.tccNum = tcc;
     gIntrObjAdcHwa.cbFxn = cb;
     gIntrObjAdcHwa.appData = (void*)0;
     ret = EDMA_registerIntr(handle, &gIntrObjAdcHwa);
     DebugP_assert(ret == 0);
-    EDMA_enableEvtIntrRegion(base, region, ch);
+  //  EDMA_enableEvtIntrRegion(base, region, ch);
     EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
     DebugP_log("Edma initialized\r\n");
 }
