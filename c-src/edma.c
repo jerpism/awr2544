@@ -85,7 +85,7 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     edmaparam.destBIdxExt   = (int8_t) EDMA_PARAM_BIDX_EXT(acnt);
     // TODO: figure out what exactly are the required options here 
     // seems to get stuck in something without the interrupts enabled
-    edmaparam.opt |= (EDMA_OPT_TCINTEN_MASK | EDMA_OPT_ITCINTEN_MASK | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
+    edmaparam.opt |= (EDMA_OPT_TCINTEN_MASK | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
     EDMA_setPaRAM(base, param, &edmaparam);
 
     gIntrObjHwaL3.tccNum = tcc;
@@ -94,18 +94,6 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     EDMA_registerIntr(gEdmaHandle[0], &gIntrObjHwaL3);
     EDMA_enableEvtIntrRegion(base, region, ch);
 
-//    DebugP_log("Configuring hwa out interrupt to map to channel %u\r\n",ch);
-   // HWA_InterruptConfig hwaintrcfg;
-   // memset(&hwaintrcfg, 0, sizeof(hwaintrcfg));
-  //  hwaintrcfg.interruptTypeFlag = HWA_PARAMDONE_INTERRUPT_TYPE_DMA;
-    //hwaintrcfg.cpu.callbackFn = &hwa_cb;
-    //hwaintrcfg.cpu.callbackArg = NULL;
-//    hwaintrcfg.dma.dstChannel = ch;
-//    ret = HWA_enableParamSetInterrupt(gHwaHandle[0], 0, &hwaintrcfg);
-//    DebugP_assert(ret == 0);
-
-    //EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
-    //EDMA_enableDmaEvtRegion(base, region, ch);
 }
 
 
@@ -227,41 +215,4 @@ void edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t
     EDMA_enableEvtIntrRegion(base, region, ch);
     EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
     DebugP_log("Edma initialized\r\n");
-}
-
-void edma_cb(void *arg){
-  //  printf("Edma adcbuf->Hwa cb\r\n");
-    return;
-}
-void edma_l3_cb(void *arg){
-  //  printf("Edma hwa->dss_l3 cb\r\n");
-    CacheP_wbInv(&gTestDst, 4096, CacheP_TYPE_ALL);
-    return;
-}
-
-void edma_init(){
-    edma_configure(gEdmaHandle[0], &edma_cb, (void*)hwaaddr, &gTestBuff, 2048, 1, 1);
-}
-
-void edma_test(void *arg){
-    Drivers_open();
-    Board_driversOpen(); 
-    srand(1337);
-
-    for(size_t i = 0; i < 2048; ++i){
-        gTestBuff[i] = (uint8_t)(rand() % 255);
-    }
-    CacheP_wbInv(gTestBuff, 2048, CacheP_TYPE_ALL);
-
-    hwa_init(gHwaHandle[0], NULL);
-    uint32_t hwaaddr = (uint32_t)SOC_virtToPhy((void*)hwa_getaddr(gHwaHandle[0]));
-    HWA_enableDoneInterrupt(gHwaHandle[0], 0,  &hwa_cb, NULL);
-   
-    edma_write();
-    DebugP_log("Done\r\n");
-
-
-    
-    while(1)__asm__("wfi");
-    
 }

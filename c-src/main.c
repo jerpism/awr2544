@@ -121,12 +121,13 @@ SemaphoreP_Object gAdcSampledSem;
 SemaphoreP_Object gBtnPressedSem;
 SemaphoreP_Object gEdmaDoneSem;
 SemaphoreP_Object gHwaDoneSem;
+SemaphoreP_Object gFrameDoneSem;
 
 /* Rest of them */
 volatile bool gState = 0; /* Tracks the current (intended) state of the RSS */
 static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
 
-static uint8_t gSampleBuff[SAMPLE_BUFF_SIZE] __attribute__((section(".bss.dss_l3")));
+static uint8_t gSampleBuff[CHIRP_DATASIZE * 128 * 2] __attribute__((section(".bss.dss_l3")));
 
 
 static inline void fail(void){
@@ -137,14 +138,20 @@ static inline void fail(void){
 
 
 void edma_callback(Edma_IntrHandle handle, void *args){
-    SemaphoreP_post(&gEdmaDoneSem);
+    //SemaphoreP_post(&gEdmaDoneSem);
 }
 
 
 void hwa_callback(uint32_t threadIdx, void *arg){
-    SemaphoreP_post(&gHwaDoneSem);
+  //  SemaphoreP_post(&gHwaDoneSem);
+  // TODO: don't blindly guess channel number here but that's a issue for future me
+  EDMA_enableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
 }
 
+static void frame_done(Edma_IntrHandle handle, void *args){
+    SemaphoreP_post(&gFrameDoneSem);
+
+}
 
 static void exec_task(void *args){
     int32_t err;
@@ -165,38 +172,36 @@ static void main_task(void *args){
     // Enable interrupts
     HwiP_enable();
 
-    DebugP_log("Ready to roll\r\n");
+    DebugP_log("Taking a picture\r\n");
 
-    while(1){
-        ClockP_usleep(5);
-        if(gState == 0){led_state(0); continue;}
+    //while(1){
+      //  ClockP_usleep(5);
+     //   if(gState == 0){led_state(0); continue;}
         
         led_state(gState);
 
         // to give the python script time 
-        ClockP_usleep(200*1000);
+      //  ClockP_usleep(200*1000);
 
         mmw_start(gMmwHandle, &err);
 
         // sampling done, stop measuring
-        SemaphoreP_pend(&gAdcSampledSem, SystemP_WAIT_FOREVER);
-        MMWave_stop(gMmwHandle, &err);
+        //SemaphoreP_pend(&gAdcSampledSem, SystemP_WAIT_FOREVER);
+        //MMWave_stop(gMmwHandle, &err);
 
 
         // move the samples to HWA input
-        edma_write();
+        //edma_write();
   //      SemaphoreP_pend(&gEdmaDoneSem, SystemP_WAIT_FOREVER);
-        while(1) __asm__("wfi");
-        hwa_run(gHwaHandle[0]);
-        SemaphoreP_pend(&gHwaDoneSem, SystemP_WAIT_FOREVER);
 
-        // write out hwa output to network
-        for(int i = 0; i < 4; ++i){
-            udp_send_data(hwaout + i * 1024, 1024);
-        }
+        SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
+        MMWave_stop(gMmwHandle, &err);
+        CacheP_wbInv(&gSampleBuff, CHIRP_DATASIZE * 128 * 2, CacheP_TYPE_ALL);
+        printf("Frame should be at %p now\r\n",&gSampleBuff);
+        while(1)__asm__("wfi");
 
 
-    }
+//}
 }
 
 
@@ -230,11 +235,11 @@ static void init_task(void *args){
     DebugP_log("HWA address is %#x\r\n",hwaaddr);
     DebugP_log("Done.\r\n");
 
-
+/*
     DebugP_log("Init network...\r\n");
     network_init(NULL);
     DebugP_log("Done.\r\n");
-
+*/
 
     // init adc
     DebugP_log("Init adc...\r\n");
@@ -259,8 +264,8 @@ static void init_task(void *args){
 
     // and EDMA
     DebugP_log("Init edma...\r\n");
- //   edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
-    edma_init(&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE);    
+    edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
+    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  (CHIRP_DATASIZE * 2),  128, 1);
     DebugP_log("Done.\r\n");
 
 
@@ -293,7 +298,7 @@ static void init_task(void *args){
     ret = SemaphoreP_constructBinary(&gEdmaDoneSem, 0);
     DebugP_assert(ret == 0);
 
-    ret = SemaphoreP_constructBinary(&gHwaDoneSem, 0);
+    ret = SemaphoreP_constructBinary(&gFrameDoneSem, 0);
     DebugP_assert(ret == 0);
 
 
@@ -378,7 +383,8 @@ void btn_isr(void *arg){
 
 
 void chirp_isr(void *arg){
-    SemaphoreP_post(&gAdcSampledSem);
+ //   SemaphoreP_post(&gAdcSampledSem);
+    edma_write();
 }
 
 
@@ -386,7 +392,6 @@ int main(void) {
     /* init SOC specific modules */
     System_init();
     Board_init();
-#define EDMA_TEST
 #ifdef EDMA_TEST
    gInitTask = xTaskCreateStatic(
             edma_test,   
