@@ -85,7 +85,7 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     edmaparam.destBIdxExt   = (int8_t) EDMA_PARAM_BIDX_EXT(acnt);
     // TODO: figure out what exactly are the required options here 
     // seems to get stuck in something without the interrupts enabled
-    edmaparam.opt |= (EDMA_OPT_TCINTEN_MASK | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
+    edmaparam.opt |= (EDMA_OPT_TCINTEN_MASK | EDMA_OPT_ITCINTEN_MASK | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
     EDMA_setPaRAM(base, param, &edmaparam);
 
     gIntrObjHwaL3.tccNum = tcc;
@@ -195,7 +195,7 @@ void edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t
     edmaparam1.destBIdxExt   = 0U;
     // TODO: figure out what exactly are the required options here 
     // seems to get stuck in something without the interrupts enabled
-    edmaparam1.opt |= (EDMA_OPT_TCINTEN_MASK | EDMA_OPT_ITCINTEN_MASK | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
+    edmaparam1.opt |= (EDMA_OPT_TCINTEN_MASK | EDMA_OPT_ITCINTEN_MASK | ((((uint32_t)tcc1)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
     EDMA_setPaRAM(base, param1, &edmaparam1);
     // Same thing here, does linking to itself with this work?
    // EDMA_linkChannel(base, param1, param1);
