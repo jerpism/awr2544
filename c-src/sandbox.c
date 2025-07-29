@@ -19,10 +19,10 @@
 #include "ti_drivers_open_close.h"
 #include "ti_board_open_close.h"
 
-uint8_t gTestDst[1024*128] __attribute__((section(".bss.dss_l3")));
 
 #define HWA_DATA 256
 #define HWA_DATA_B 512
+uint8_t gTestDst[HWA_DATA_B * 2] __attribute__((section(".bss.dss_l3")));
 
 static Edma_IntrObject gIntrObjHwaL3;
 
@@ -114,7 +114,7 @@ static HWA_RAMAttrs HwaRamCfg[HWA_NUM_RAMS] =
 void sb_edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t acnt, uint16_t bcnt, uint16_t ccnt){
     uint32_t base = 0;
     uint32_t region = 0;
-    uint32_t ch = 0;
+    uint32_t ch = 1;
     uint32_t tcc = 0;
     uint32_t param = 0;
     int32_t ret = 0;
@@ -169,7 +169,7 @@ void sb_edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint1
     gIntrObjHwaL3.appData = (void*)0;
     EDMA_registerIntr(gEdmaHandle[0], &gIntrObjHwaL3);
     EDMA_enableEvtIntrRegion(base, region, ch);
-    EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
+    EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_QDMA);
 
 }
 
@@ -195,7 +195,7 @@ void sb_hwa_init(HWA_Handle handle,  HWA_Done_IntHandlerFuncPTR cb){
 }
 
 void edma_cb(){
-
+    CacheP_wbInv(&gTestDst, HWA_DATA_B * 2, CacheP_TYPE_ALL);
 }
 
 void sandbox_main(void *args){
