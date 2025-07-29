@@ -98,11 +98,22 @@ uint32_t hwa_getaddr(HWA_Handle handle){
 }
 
 void hwa_init(HWA_Handle handle,  HWA_Done_IntHandlerFuncPTR cb){
+    DSSHWACCPARAMRegs *pparam = (DSSHWACCPARAMRegs*)gHwaObjectPtr[0]->hwAttrs->paramBaseAddr;
     HWA_configCommon(handle, &HwaCommonConfig[0]);
     HWA_configParamSet(handle, 0, &HwaParamConfig[0], NULL);
-    if(cb != NULL){
-        HWA_enableDoneInterrupt(handle, 0,  cb, NULL);
-    }
+  //  if(cb != NULL){
+  //      HWA_enableDoneInterrupt(handle, 0,  cb, NULL);
+   // }
+    // set HWA2DMA_TRIGDST to channel 3 (index 2)
+   // pparam->HEADER |= (2U << 11);
+    // and enable DMA trigger on completion
+    //pparam->HEADER |= (1U << 10);
+    HWA_InterruptConfig intrcfg;
+    memset(&intrcfg, 0, sizeof(HWA_InterruptConfig));
+    intrcfg.interruptTypeFlag = HWA_PARAMDONE_INTERRUPT_TYPE_DMA;
+    intrcfg.dma.dstChannel = 3;
+    HWA_enableParamSetInterrupt(handle, 0, &intrcfg);
+
     HWA_enable(handle, 1U);
     HWA_reset(handle);
 }

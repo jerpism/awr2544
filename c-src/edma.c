@@ -52,7 +52,8 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     region = EDMA_getRegionId(handle);
     DebugP_assert(region < SOC_EDMA_NUM_REGIONS);
 
-    ch = EDMA_RESOURCE_ALLOC_ANY;
+    //&ch = EDMA_RESOURCE_ALLOC_ANY
+    ch = 3;
     ret = EDMA_allocDmaChannel(handle, &ch);
     DebugP_assert(ret == 0);
 

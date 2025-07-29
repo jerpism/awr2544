@@ -56,13 +56,15 @@
 
 /* Project header files */
 // TODO: might need to rename these as to not conflict with SDK includes
-#include <mmw.h>
+/*#include <mmw.h>
 #include <adcbuf.h>
 #include <edma.h>
 #include <cfg.h>
 #include <gpio.h>
 #include <hwa.h>
-#include <network.h>
+#include <network.h>*/
+
+#include <sandbox.h>
 
 /* Task related macros */
 #define EXEC_TASK_PRI   (configMAX_PRIORITIES-1)     // must be higher than INIT_TASK_PRI
@@ -95,6 +97,7 @@ TaskHandle_t gInitTask;
 TaskHandle_t gMainTask;
 TaskHandle_t gExecTask;
 TaskHandle_t gDpcTask;
+#define SANDBOX
 
 
 /* == Function Declarations == */
@@ -110,6 +113,8 @@ static void main_task(void*);
 /* Other functions */
 static inline void fail(void);
 
+#ifdef SANDBOX
+#else
 extern void edma_test(void*);
 /* == Global Variables == */
 /* Handles */
@@ -143,22 +148,24 @@ void edma_callback(Edma_IntrHandle handle, void *args){
 
 
 void hwa_callback(uint32_t threadIdx, void *arg){
+    int32_t err;
   //  SemaphoreP_post(&gHwaDoneSem);
   // TODO: don't blindly guess channel number here but that's a issue for future me
 
    // volatile uint32_t * const addr = (uint32_t*)(EDMA_getBaseAddr(gEdmaHandle[0])+0x1010);
    // *addr = 0b10;
-    printf("HWA said it's done\r\n");
+    //printf("HWA said it's done\r\n");
   //EDMA_disableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
-  EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
+  //EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
+  //HWA_reset(gHwaHandle[0]);
 }
 
 static volatile int gChirpCount = 0;
 static void frame_done(Edma_IntrHandle handle, void *args){
   //  gChirpCount++;
   //  if(gChirpCount >= 128)
-    printf("Frame transfer is done\r\n");
-  //      SemaphoreP_post(&gFrameDoneSem);
+  //  printf("Frame transfer is done\r\n");
+        SemaphoreP_post(&gFrameDoneSem);
 }
 
 static void exec_task(void *args){
@@ -186,7 +193,7 @@ static void main_task(void *args){
       //  ClockP_usleep(5);
      //   if(gState == 0){led_state(0); continue;}
         
-        led_state(gState);
+    //    led_state(gState);
 
         // to give the python script time 
       //  ClockP_usleep(200*1000);
@@ -205,7 +212,7 @@ static void main_task(void *args){
         SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
         MMWave_stop(gMmwHandle, &err);
         CacheP_wbInv(&gSampleBuff, CHIRP_DATASIZE * 128 * 2, CacheP_TYPE_ALL);
-        printf("Frame should be at %p now\r\n",&gSampleBuff);
+        printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
         while(1)__asm__("wfi");
 
 
@@ -391,18 +398,19 @@ void btn_isr(void *arg){
 
 
 void chirp_isr(void *arg){
+    int32_t err;
  //   SemaphoreP_post(&gAdcSampledSem);
     edma_write();
 }
-
+#endif
 
 int main(void) {
     /* init SOC specific modules */
     System_init();
     Board_init();
-#ifdef EDMA_TEST
+#ifdef SANDBOX
    gInitTask = xTaskCreateStatic(
-            edma_test,   
+            sandbox_main,   
             "init task", 
             INIT_TASK_SIZE,
             NULL,           
