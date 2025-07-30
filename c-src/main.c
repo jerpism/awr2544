@@ -64,6 +64,8 @@
 #include <hwa.h>
 #include <network.h>
 
+//#include <sandbox.h>
+
 /* Task related macros */
 #define EXEC_TASK_PRI   (configMAX_PRIORITIES-1)     // must be higher than INIT_TASK_PRI
 #define MAIN_TASK_PRI   (configMAX_PRIORITIES-3)
@@ -78,6 +80,8 @@
 #define SAMPLE_SIZE (sizeof(uint16_t))
 #define SAMPLE_BUFF_SIZE (CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE * NUM_RX_ANTENNAS * CHIRP_BUFF_CNT * CFG_ADCBUF_PINGPONG_THRESHOLD)
 #define CHIRP_DATASIZE (NUM_RX_ANTENNAS * CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE)
+#define CHIRPS_PER_FRAME 128
+#define FRAME_DATASIZE (CHIRP_DATASIZE * CHIRPS_PER_FRAME * 2)
 
 
 /* Task related global variables */
@@ -110,8 +114,9 @@ static void main_task(void*);
 /* Other functions */
 static inline void fail(void);
 
-extern void uart_dump_samples(void*, size_t);
-
+#ifdef SANDBOX
+#else
+extern void edma_test(void*);
 /* == Global Variables == */
 /* Handles */
 MMWave_Handle gMmwHandle = NULL;
@@ -122,12 +127,13 @@ SemaphoreP_Object gAdcSampledSem;
 SemaphoreP_Object gBtnPressedSem;
 SemaphoreP_Object gEdmaDoneSem;
 SemaphoreP_Object gHwaDoneSem;
+SemaphoreP_Object gFrameDoneSem;
 
 /* Rest of them */
 volatile bool gState = 0; /* Tracks the current (intended) state of the RSS */
 static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
 
-static uint8_t gSampleBuff[SAMPLE_BUFF_SIZE] __attribute__((section(".bss.dss_l3")));
+static uint8_t gSampleBuff[FRAME_DATASIZE] __attribute__((section(".bss.dss_l3")));
 
 
 static inline void fail(void){
@@ -138,12 +144,22 @@ static inline void fail(void){
 
 
 void edma_callback(Edma_IntrHandle handle, void *args){
-    SemaphoreP_post(&gEdmaDoneSem);
 }
 
 
 void hwa_callback(uint32_t threadIdx, void *arg){
-    SemaphoreP_post(&gHwaDoneSem);
+    int32_t err;
+        HWA_reset(gHwaHandle[0]);
+
+    // TODO: don't blindly guess channel number here but that's a issue for future me
+    // and it should always be 3 anyways
+    EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
+
+}
+
+
+static void frame_done(Edma_IntrHandle handle, void *args){
+        SemaphoreP_post(&gFrameDoneSem);
 }
 
 
@@ -158,52 +174,26 @@ static void exec_task(void *args){
 static void main_task(void *args){
     int32_t err = 0;
     int32_t ret = 0;
-    static bool started = 0;
 
     // TODO: grab this from sysconfig somehow but for now assume bank 2 will be output
     void *hwaout = (void*)(hwa_getaddr(gHwaHandle[0])+0x4000);
 
-    // Enable interrupts
     HwiP_enable();
 
-    DebugP_log("Ready to roll\r\n");
+    DebugP_log("Taking a picture\r\n");
+    mmw_start(gMmwHandle, &err);
 
-    while(1){
-        ClockP_usleep(5);
-        if(gState == 0){led_state(0); continue;}
-        
-        led_state(gState);
-
-        // to give the python script time 
-        ClockP_usleep(200*1000);
-
-        mmw_start(gMmwHandle, &err);
-
-        // sampling done, stop measuring
-        SemaphoreP_pend(&gAdcSampledSem, SystemP_WAIT_FOREVER);
-        MMWave_stop(gMmwHandle, &err);
-
-
-        // move the samples to HWA input
-        edma_write();
-        SemaphoreP_pend(&gEdmaDoneSem, SystemP_WAIT_FOREVER);
-
-        hwa_run(gHwaHandle[0]);
-        SemaphoreP_pend(&gHwaDoneSem, SystemP_WAIT_FOREVER);
-
-        // write out hwa output to network
-        for(int i = 0; i < 4; ++i){
-            udp_send_data(hwaout + i * 1024, 1024);
-        }
-
-
-    }
+    SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
+    MMWave_stop(gMmwHandle, &err);
+    CacheP_wbInv(&gSampleBuff, CHIRP_DATASIZE * 128 * 2, CacheP_TYPE_ALL);
+    printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
+    while(1)__asm__("wfi");
 }
 
 
 /* init process goes as follows:
  * 
- *  - initialize both the ADCBuf and MMW peripherals
+ *  - initialize ADCBUF, MMW, EDMA and enet
  *  - synchronize mmwavelink
  *  - create the MMWave_execute task
  *  - open the device
@@ -217,10 +207,10 @@ static void main_task(void *args){
 static void init_task(void *args){
     int32_t err = 0;
     int32_t ret = 0;
+    HWA_SrcDMAConfig dmacfg;
 
     Drivers_open();
     Board_driversOpen(); 
-
 
     DebugP_log("Init task launched\r\n");
 
@@ -231,11 +221,11 @@ static void init_task(void *args){
     DebugP_log("HWA address is %#x\r\n",hwaaddr);
     DebugP_log("Done.\r\n");
 
-
+/*
     DebugP_log("Init network...\r\n");
     network_init(NULL);
     DebugP_log("Done.\r\n");
-
+*/
 
     // init adc
     DebugP_log("Init adc...\r\n");
@@ -261,6 +251,7 @@ static void init_task(void *args){
     // and EDMA
     DebugP_log("Init edma...\r\n");
     edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
+    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  (CHIRP_DATASIZE * 2),  CHIRPS_PER_FRAME, 1);
     DebugP_log("Done.\r\n");
 
 
@@ -293,7 +284,7 @@ static void init_task(void *args){
     ret = SemaphoreP_constructBinary(&gEdmaDoneSem, 0);
     DebugP_assert(ret == 0);
 
-    ret = SemaphoreP_constructBinary(&gHwaDoneSem, 0);
+    ret = SemaphoreP_constructBinary(&gFrameDoneSem, 0);
     DebugP_assert(ret == 0);
 
 
@@ -378,15 +369,27 @@ void btn_isr(void *arg){
 
 
 void chirp_isr(void *arg){
-    SemaphoreP_post(&gAdcSampledSem);
+    int32_t err;
+ //   SemaphoreP_post(&gAdcSampledSem);
+    edma_write();
 }
-
+#endif
 
 int main(void) {
     /* init SOC specific modules */
     System_init();
     Board_init();
-
+#ifdef SANDBOX
+   gInitTask = xTaskCreateStatic(
+            sandbox_main,   
+            "init task", 
+            INIT_TASK_SIZE,
+            NULL,           
+            INIT_TASK_PRI,  
+            gInitTaskStack, 
+            &gInitTaskObj); 
+    configASSERT(gInitTask != NULL);
+#else
     /* Create this at 2nd highest priority to initialize everything
      * the MMWave_execute task must have a higher priority than this */
    gInitTask = xTaskCreateStatic(
@@ -398,6 +401,7 @@ int main(void) {
             gInitTaskStack, 
             &gInitTaskObj); 
     configASSERT(gInitTask != NULL);
+#endif
     vTaskStartScheduler();
 
     DebugP_assertNoLog(0);
