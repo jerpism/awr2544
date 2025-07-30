@@ -81,7 +81,7 @@
 #define SAMPLE_BUFF_SIZE (CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE * NUM_RX_ANTENNAS * CHIRP_BUFF_CNT * CFG_ADCBUF_PINGPONG_THRESHOLD)
 #define CHIRP_DATASIZE (NUM_RX_ANTENNAS * CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE)
 #define CHIRPS_PER_FRAME 128
-#define FRAME_DATASIZE (CHIRP_DATASIZE * CHIRPS_PER_FRAME * 2)
+#define FRAME_DATASIZE (CHIRP_DATASIZE * CHIRPS_PER_FRAME)
 
 
 /* Task related global variables */
@@ -185,7 +185,7 @@ static void main_task(void *args){
 
     SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
     MMWave_stop(gMmwHandle, &err);
-    CacheP_wbInv(&gSampleBuff, CHIRP_DATASIZE * 128 * 2, CacheP_TYPE_ALL);
+    CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);
     printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
     while(1)__asm__("wfi");
 }
@@ -251,7 +251,7 @@ static void init_task(void *args){
     // and EDMA
     DebugP_log("Init edma...\r\n");
     edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
-    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  (CHIRP_DATASIZE * 2),  CHIRPS_PER_FRAME, 1);
+    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  CHIRP_DATASIZE,  CHIRPS_PER_FRAME, 1);
     DebugP_log("Done.\r\n");
 
 
