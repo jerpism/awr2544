@@ -149,11 +149,10 @@ void edma_callback(Edma_IntrHandle handle, void *args){
 }
 
 
-void hwa_callback(uint32_t threadIdx, void *arg){
-    int32_t err;
-        HWA_reset(gHwaHandle[0]);
+void hwa_callback(uint32_t intrIdx, uint32_t paramSet, void *arg){
+    HWA_reset(gHwaHandle[0]);
 
-    // TODO: don't blindly guess channel number here but that's a issue for future me
+    // TODO: don't blindly guess channel number here but that's an issue for future me
     // and it should always be 3 anyways
     EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
 
@@ -377,7 +376,6 @@ void btn_isr(void *arg){
 
 void chirp_isr(void *arg){
     int32_t err;
- //   SemaphoreP_post(&gAdcSampledSem);
     edma_write();
 }
 #endif
