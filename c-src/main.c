@@ -82,6 +82,8 @@
 #define CHIRP_DATASIZE (NUM_RX_ANTENNAS * CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE)
 #define CHIRPS_PER_FRAME 128
 #define FRAME_DATASIZE (CHIRP_DATASIZE * CHIRPS_PER_FRAME)
+#define UDP_BYTES_PER_PKT 1024
+#define UDP_PKT_CNT (FRAME_DATASIZE / UDP_BYTES_PER_PKT)
 
 
 /* Task related global variables */
@@ -187,6 +189,11 @@ static void main_task(void *args){
     MMWave_stop(gMmwHandle, &err);
     CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);
     printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
+
+    DebugP_log("Sending it out over UDP now\r\n");
+    for(size_t i = 0; i < UDP_PKT_CNT; ++i){
+        udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
+    }
     while(1)__asm__("wfi");
 }
 
@@ -221,11 +228,11 @@ static void init_task(void *args){
     DebugP_log("HWA address is %#x\r\n",hwaaddr);
     DebugP_log("Done.\r\n");
 
-/*
+
     DebugP_log("Init network...\r\n");
     network_init(NULL);
     DebugP_log("Done.\r\n");
-*/
+
 
     // init adc
     DebugP_log("Init adc...\r\n");
