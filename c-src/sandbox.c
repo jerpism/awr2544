@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <drivers/hwa.h>
+#include "drivers/edma/v0/edma.h"
+#include "drivers/hwa/v1/hwa.h"
 #include "ti_drivers_config.h"
 #include <cfg.h>
 
@@ -111,10 +113,14 @@ static HWA_RAMAttrs HwaRamCfg[HWA_NUM_RAMS] =
     {CSL_DSS_HWA_WINDOW_RAM_U_BASE, CSL_DSS_HWA_WINDOW_RAM_U_SIZE}
 };
 
+void test_cb(){
+    printf("Hello from test_cb\r\n");
+}
+
 void sb_edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t acnt, uint16_t bcnt, uint16_t ccnt){
     uint32_t base = 0;
     uint32_t region = 0;
-    uint32_t ch = 1;
+    uint32_t ch = 0;
     uint32_t tcc = 0;
     uint32_t param = 0;
     int32_t ret = 0;
@@ -130,7 +136,7 @@ void sb_edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint1
     region = EDMA_getRegionId(handle);
     DebugP_assert(region < SOC_EDMA_NUM_REGIONS);
 
-    //&ch = EDMA_RESOURCE_ALLOC_ANY
+    //ch = EDMA_RESOURCE_ALLOC_ANY;
     //ch = 1;
     ret = EDMA_allocDmaChannel(handle, &ch);
     DebugP_assert(ret == 0);
@@ -169,7 +175,7 @@ void sb_edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint1
     gIntrObjHwaL3.appData = (void*)0;
     EDMA_registerIntr(gEdmaHandle[0], &gIntrObjHwaL3);
     EDMA_enableEvtIntrRegion(base, region, ch);
-    EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_QDMA);
+    EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
 
 }
 
@@ -186,8 +192,9 @@ void sb_hwa_init(HWA_Handle handle,  HWA_Done_IntHandlerFuncPTR cb){
     //pparam->HEADER |= (1U << 10);
     HWA_InterruptConfig intrcfg;
     memset(&intrcfg, 0, sizeof(HWA_InterruptConfig));
-    intrcfg.interruptTypeFlag = HWA_PARAMDONE_INTERRUPT_TYPE_DMA;
+    intrcfg.interruptTypeFlag = HWA_PARAMDONE_INTERRUPT_TYPE_CPU_INTR1;
     intrcfg.dma.dstChannel = 0;
+    intrcfg.cpu.callbackFn = &test_cb;
     HWA_enableParamSetInterrupt(handle, 0, &intrcfg);
 
     HWA_enable(handle, 1U);
@@ -195,7 +202,8 @@ void sb_hwa_init(HWA_Handle handle,  HWA_Done_IntHandlerFuncPTR cb){
 }
 
 void edma_cb(){
-    CacheP_wbInv(&gTestDst, HWA_DATA_B * 2, CacheP_TYPE_ALL);
+    printf("EDMA callback\r\n");
+    //CacheP_wbInv(&gTestDst, HWA_DATA_B * 2, CacheP_TYPE_ALL);
 }
 
 void sandbox_main(void *args){
@@ -211,18 +219,25 @@ void sandbox_main(void *args){
     uint32_t hwaout = meminfo.baseAddress + HwaParamConfig[0].dest.dstAddr;
     DebugP_log("HWA input is %#x and output %#x \r\n",hwain, hwaout);
 
-    DebugP_log("Init EDMA\r\n");
-    sb_edma_configure(gEdmaHandle[0], &edma_cb, &gTestDst, (void*)hwaout, 1024, 1, 1);
     srand(1337);
     DebugP_log("Populating src\r\n");
     for(size_t i = 0; i < HWA_DATA_B; ++i){
         ((uint8_t*)hwain)[i] = (uint8_t)(rand() % 255);
     }
 
+    DebugP_log("Init EDMA\r\n");
+    sb_edma_configure(gEdmaHandle[0], &edma_cb, &gTestDst, (void*)hwaout, 1024, 1, 1);
+    //CacheP_wbInv(&gTestDst, HWA_DATA_B * 2, CacheP_TYPE_ALL);
 
     DebugP_log("Running HWA\r\n");
     HWA_reset(gHwaHandle[0]);
     HWA_setSoftwareTrigger(gHwaHandle[0], HWA_TRIG_MODE_SOFTWARE);
+    
+    DebugP_log("Running HWA\r\n");
+    HWA_reset(gHwaHandle[0]);
+    HWA_setSoftwareTrigger(gHwaHandle[0], HWA_TRIG_MODE_SOFTWARE);
+
+
     DebugP_log("Done\r\n");
     while(1)__asm__("wfi");
 
