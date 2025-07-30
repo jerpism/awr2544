@@ -56,15 +56,15 @@
 
 /* Project header files */
 // TODO: might need to rename these as to not conflict with SDK includes
-/*#include <mmw.h>
+#include <mmw.h>
 #include <adcbuf.h>
 #include <edma.h>
 #include <cfg.h>
 #include <gpio.h>
 #include <hwa.h>
-#include <network.h>*/
+#include <network.h>
 
-#include <sandbox.h>
+//#include <sandbox.h>
 
 /* Task related macros */
 #define EXEC_TASK_PRI   (configMAX_PRIORITIES-1)     // must be higher than INIT_TASK_PRI
@@ -80,6 +80,8 @@
 #define SAMPLE_SIZE (sizeof(uint16_t))
 #define SAMPLE_BUFF_SIZE (CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE * NUM_RX_ANTENNAS * CHIRP_BUFF_CNT * CFG_ADCBUF_PINGPONG_THRESHOLD)
 #define CHIRP_DATASIZE (NUM_RX_ANTENNAS * CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE)
+#define CHIRPS_PER_FRAME 128
+#define FRAME_DATASIZE (CHIRP_DATASIZE * CHIRPS_PER_FRAME * 2)
 
 
 /* Task related global variables */
@@ -97,7 +99,6 @@ TaskHandle_t gInitTask;
 TaskHandle_t gMainTask;
 TaskHandle_t gExecTask;
 TaskHandle_t gDpcTask;
-#define SANDBOX
 
 
 /* == Function Declarations == */
@@ -132,7 +133,7 @@ SemaphoreP_Object gFrameDoneSem;
 volatile bool gState = 0; /* Tracks the current (intended) state of the RSS */
 static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
 
-static uint8_t gSampleBuff[CHIRP_DATASIZE * 128 * 2] __attribute__((section(".bss.dss_l3")));
+static uint8_t gSampleBuff[FRAME_DATASIZE] __attribute__((section(".bss.dss_l3")));
 
 
 static inline void fail(void){
@@ -143,30 +144,24 @@ static inline void fail(void){
 
 
 void edma_callback(Edma_IntrHandle handle, void *args){
-    //SemaphoreP_post(&gEdmaDoneSem);
 }
 
 
 void hwa_callback(uint32_t threadIdx, void *arg){
     int32_t err;
-  //  SemaphoreP_post(&gHwaDoneSem);
-  // TODO: don't blindly guess channel number here but that's a issue for future me
+        HWA_reset(gHwaHandle[0]);
 
-   // volatile uint32_t * const addr = (uint32_t*)(EDMA_getBaseAddr(gEdmaHandle[0])+0x1010);
-   // *addr = 0b10;
-    //printf("HWA said it's done\r\n");
-  //EDMA_disableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3, EDMA_TRIG_MODE_MANUAL);
-  //EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
-  //HWA_reset(gHwaHandle[0]);
+    // TODO: don't blindly guess channel number here but that's a issue for future me
+    // and it should always be 3 anyways
+    EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
+
 }
 
-static volatile int gChirpCount = 0;
+
 static void frame_done(Edma_IntrHandle handle, void *args){
-  //  gChirpCount++;
-  //  if(gChirpCount >= 128)
-  //  printf("Frame transfer is done\r\n");
         SemaphoreP_post(&gFrameDoneSem);
 }
+
 
 static void exec_task(void *args){
     int32_t err;
@@ -179,50 +174,26 @@ static void exec_task(void *args){
 static void main_task(void *args){
     int32_t err = 0;
     int32_t ret = 0;
-    static bool started = 0;
 
     // TODO: grab this from sysconfig somehow but for now assume bank 2 will be output
     void *hwaout = (void*)(hwa_getaddr(gHwaHandle[0])+0x4000);
 
-    // Enable interrupts
     HwiP_enable();
 
     DebugP_log("Taking a picture\r\n");
+    mmw_start(gMmwHandle, &err);
 
-    //while(1){
-      //  ClockP_usleep(5);
-     //   if(gState == 0){led_state(0); continue;}
-        
-    //    led_state(gState);
-
-        // to give the python script time 
-      //  ClockP_usleep(200*1000);
-
-        mmw_start(gMmwHandle, &err);
-
-        // sampling done, stop measuring
-        //SemaphoreP_pend(&gAdcSampledSem, SystemP_WAIT_FOREVER);
-        //MMWave_stop(gMmwHandle, &err);
-
-
-        // move the samples to HWA input
-        //edma_write();
-  //      SemaphoreP_pend(&gEdmaDoneSem, SystemP_WAIT_FOREVER);
-
-        SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
-        MMWave_stop(gMmwHandle, &err);
-        CacheP_wbInv(&gSampleBuff, CHIRP_DATASIZE * 128 * 2, CacheP_TYPE_ALL);
-        printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
-        while(1)__asm__("wfi");
-
-
-//}
+    SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
+    MMWave_stop(gMmwHandle, &err);
+    CacheP_wbInv(&gSampleBuff, CHIRP_DATASIZE * 128 * 2, CacheP_TYPE_ALL);
+    printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
+    while(1)__asm__("wfi");
 }
 
 
 /* init process goes as follows:
  * 
- *  - initialize both the ADCBuf and MMW peripherals
+ *  - initialize ADCBUF, MMW, EDMA and enet
  *  - synchronize mmwavelink
  *  - create the MMWave_execute task
  *  - open the device
@@ -280,7 +251,7 @@ static void init_task(void *args){
     // and EDMA
     DebugP_log("Init edma...\r\n");
     edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
-    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  (CHIRP_DATASIZE * 2),  1, 1);
+    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  (CHIRP_DATASIZE * 2),  CHIRPS_PER_FRAME, 1);
     DebugP_log("Done.\r\n");
 
 
