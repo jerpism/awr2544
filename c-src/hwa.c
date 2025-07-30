@@ -97,7 +97,8 @@ uint32_t hwa_getaddr(HWA_Handle handle){
     return meminfo.baseAddress;
 }
 
-void hwa_init(HWA_Handle handle,  HWA_Done_IntHandlerFuncPTR cb){
+
+void hwa_init(HWA_Handle handle,  HWA_ParamDone_IntHandlerFuncPTR cb){
     DSSHWACCPARAMRegs *pparam = (DSSHWACCPARAMRegs*)gHwaObjectPtr[0]->hwAttrs->paramBaseAddr;
     HWA_configCommon(handle, &HwaCommonConfig[0]);
     HWA_configParamSet(handle, 0, &HwaParamConfig[0], NULL);
@@ -110,6 +111,7 @@ void hwa_init(HWA_Handle handle,  HWA_Done_IntHandlerFuncPTR cb){
     HWA_enable(handle, 1U);
     HWA_reset(handle);
 }
+
 
 void hwa_run(HWA_Handle handle){
     HWA_reset(handle);
