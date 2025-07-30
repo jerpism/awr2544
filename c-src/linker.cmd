@@ -118,6 +118,16 @@ SECTIONS
     .bss:UDP_IPERF_SND_BUF  (NOLOAD) {} ALIGN (128) > DSS_L3
 
 }
+/* L2 memory map
+ *     112K       16K        736K        16K           16K
+ *   0x1C000     0x4000    0xB8000      0x4000       0x4000
+ *  +----------------------------------------------------------+
+ *  | SBL RES | CPPI DESC | MSS_L2 | USR_SHM_MEM | LOG_SHM_MEM |
+ *  +----------------------------------------------------------+
+ *  |         |           |        |             |             |
+ * 0x10200000 0x1021C000  |        0x102D8000    0x102DC000    0x102E0000
+ *                        0x10220000         
+ */                        
 
 MEMORY
 {
@@ -138,6 +148,7 @@ MEMORY
     /* shared memories that are used by RTOS/NORTOS cores */
     /* On R5F,
      * - make sure there are MPU entries which maps below regions as non-cache
+     * Might not be needed so these could be removed to get 32K extra for MMS_L2
      */
     USER_SHM_MEM            : ORIGIN = (0x102DC000 - 0x4000), LENGTH = 0x00004000
     LOG_SHM_MEM             : ORIGIN = (0x102E0000 - 0x4000), LENGTH = 0x00004000
