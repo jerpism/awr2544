@@ -42,9 +42,9 @@ static HWA_ParamConfig HwaParamConfig[1] =
 		.dest =
         {
             .dstAddr = 0x4000,
-            .dstAcnt = (CFG_PROFILE_NUMADCSAMPLES - 1),
+            .dstAcnt = (CFG_PROFILE_NUMADCSAMPLES - 1) / 2,
             .dstAIdx = sizeof(int16_t) * 2,
-            .dstBIdx = (sizeof(int16_t) * 2) * CFG_PROFILE_NUMADCSAMPLES,
+            .dstBIdx = sizeof(int16_t) * CFG_PROFILE_NUMADCSAMPLES,
             .dstRealComplex = HWA_SAMPLES_FORMAT_COMPLEX,
             .dstWidth = HWA_SAMPLES_WIDTH_16BIT,
             .dstSign = HWA_SAMPLES_SIGNED,
