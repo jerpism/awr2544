@@ -141,6 +141,7 @@ static void App_tcpipInitCompleteCb(void *pArg)
     sys_sem_signal(pSem);
 }
 
+
 static void App_setupNetworkStack()
 {
     sys_sem_t pInitSem;
@@ -175,6 +176,7 @@ static void Appsocket_fillHostSocketInfo(struct App_hostInfo_t* pHostInfo)
     return;
 }
 
+
 static void open_socket(void *pArg){
         int32_t ret = 0;
         struct sockaddr* pAddr = pArg;
@@ -204,8 +206,12 @@ static void open_socket(void *pArg){
 
 }
 
+
 int32_t udp_send_data(void *buff, size_t n){
     int32_t ret = 0;
+
+    // FIXME: this is definitely not right but it does seem to work for some reason
+    // so leave as is for now
     struct sockaddr *pAddr = &gHostInfo.socketAddr;
     CacheP_wbInv(buff, n, CacheP_TYPE_ALL);
     ret = lwip_sendto(gSock, buff, n, 0, pAddr, sizeof(*pAddr));
