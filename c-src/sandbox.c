@@ -8,7 +8,8 @@
 #include "drivers/hwa/v1/hwa.h"
 #include "ti_drivers_config.h"
 #include <cfg.h>
-
+#include "FreeRTOS.h"
+#include "task.h"
 #include <drivers/edma.h>
 #include <drivers/hwa.h>
 #include <drivers/uart.h>
