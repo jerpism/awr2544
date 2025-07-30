@@ -74,15 +74,15 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     edmaparam.bCnt          = (uint16_t) bcnt;    
     edmaparam.cCnt          = (uint16_t) ccnt;
     edmaparam.bCntReload    = (uint16_t) bcnt;
-    edmaparam.srcBIdx       = (int16_t)  EDMA_PARAM_BIDX(acnt);
+    // Since we're always reading what's at the HWA output srcBIdx should be left as 0
+    edmaparam.srcBIdx       = 0;
     edmaparam.destBIdx      = (int16_t)  EDMA_PARAM_BIDX(acnt);
     edmaparam.srcCIdx       = acnt;
     edmaparam.destCIdx      = acnt;
-    edmaparam.linkAddr      = 0xFFFFU; // Change this when we want to constantly move frames
-    edmaparam.srcBIdxExt    = (int8_t) EDMA_PARAM_BIDX_EXT(acnt);
+    edmaparam.linkAddr      = EDMA_TPCC_OPT(param); 
+    edmaparam.srcBIdxExt    = 0;
     edmaparam.destBIdxExt   = (int8_t) EDMA_PARAM_BIDX_EXT(acnt);
-    // TODO: figure out what exactly are the required options here 
-    // seems to get stuck in something without the interrupts enabled
+    // We only want to get an interrupt when a whole frame has been moved to L3
     edmaparam.opt |= (EDMA_OPT_TCINTEN_MASK | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
     EDMA_setPaRAM(base, param, &edmaparam);
 
