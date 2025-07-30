@@ -114,7 +114,8 @@ static HWA_RAMAttrs HwaRamCfg[HWA_NUM_RAMS] =
 };
 
 void test_cb(){
-    printf("Hello from test_cb\r\n");
+    HWA_reset(gHwaHandle[0]);
+    EDMA_enableTransferRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 0, EDMA_TRIG_MODE_MANUAL);
 }
 
 void sb_edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t acnt, uint16_t bcnt, uint16_t ccnt){
@@ -175,7 +176,7 @@ void sb_edma_configure(EDMA_Handle handle, void *cb, void *dst, void *src, uint1
     gIntrObjHwaL3.appData = (void*)0;
     EDMA_registerIntr(gEdmaHandle[0], &gIntrObjHwaL3);
     EDMA_enableEvtIntrRegion(base, region, ch);
-    EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
+//    EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
 
 }
 
@@ -203,7 +204,6 @@ void sb_hwa_init(HWA_Handle handle,  HWA_Done_IntHandlerFuncPTR cb){
 
 void edma_cb(){
     printf("EDMA callback\r\n");
-    //CacheP_wbInv(&gTestDst, HWA_DATA_B * 2, CacheP_TYPE_ALL);
 }
 
 void sandbox_main(void *args){
@@ -221,22 +221,25 @@ void sandbox_main(void *args){
 
     srand(1337);
     DebugP_log("Populating src\r\n");
-    for(size_t i = 0; i < HWA_DATA_B; ++i){
+    for(size_t i = 0; i < HWA_DATA_B * 4; ++i){
         ((uint8_t*)hwain)[i] = (uint8_t)(rand() % 255);
     }
 
     DebugP_log("Init EDMA\r\n");
-    sb_edma_configure(gEdmaHandle[0], &edma_cb, &gTestDst, (void*)hwaout, 1024, 1, 1);
-    //CacheP_wbInv(&gTestDst, HWA_DATA_B * 2, CacheP_TYPE_ALL);
+    sb_edma_configure(gEdmaHandle[0], &edma_cb, &gTestDst, (void*)hwaout, 512, 4, 1);
 
-    DebugP_log("Running HWA\r\n");
+    DebugP_log("Running HWA 1\r\n");
     HWA_reset(gHwaHandle[0]);
     HWA_setSoftwareTrigger(gHwaHandle[0], HWA_TRIG_MODE_SOFTWARE);
     
-    DebugP_log("Running HWA\r\n");
-    HWA_reset(gHwaHandle[0]);
+    DebugP_log("Running HWA 2\r\n");
     HWA_setSoftwareTrigger(gHwaHandle[0], HWA_TRIG_MODE_SOFTWARE);
 
+    DebugP_log("Running HWA 3\r\n");
+    HWA_setSoftwareTrigger(gHwaHandle[0], HWA_TRIG_MODE_SOFTWARE);
+
+    DebugP_log("Running HWA 4\r\n");
+    HWA_setSoftwareTrigger(gHwaHandle[0], HWA_TRIG_MODE_SOFTWARE);
 
     DebugP_log("Done\r\n");
     while(1)__asm__("wfi");
