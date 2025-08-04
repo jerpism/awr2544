@@ -68,7 +68,7 @@
 
 /* Task related macros */
 #define EXEC_TASK_PRI   (configMAX_PRIORITIES-1)     // must be higher than INIT_TASK_PRI
-#define MAIN_TASK_PRI   (configMAX_PRIORITIES-3)
+#define MAIN_TASK_PRI   0 //(configMAX_PRIORITIES-3)
 #define INIT_TASK_PRI   (configMAX_PRIORITIES-2)
 #define EXEC_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
 #define MAIN_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
@@ -76,9 +76,7 @@
 #define INIT_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
 
 /* Project related macros */
-#define CHIRP_BUFF_CNT 4                // how many sets of CFG_ADCBUF_PINGPONG_THRESHOLD (usually 1) chirps to store 
 #define SAMPLE_SIZE (sizeof(uint16_t))
-#define SAMPLE_BUFF_SIZE (CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE * NUM_RX_ANTENNAS * CHIRP_BUFF_CNT * CFG_ADCBUF_PINGPONG_THRESHOLD)
 #define CHIRP_DATASIZE (NUM_RX_ANTENNAS * CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE)
 #define CHIRPS_PER_FRAME 128
 #define FRAME_DATASIZE (CHIRP_DATASIZE * CHIRPS_PER_FRAME)
