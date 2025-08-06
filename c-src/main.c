@@ -68,7 +68,7 @@
 
 /* Task related macros */
 #define EXEC_TASK_PRI   (configMAX_PRIORITIES-1)     // must be higher than INIT_TASK_PRI
-#define MAIN_TASK_PRI   0 //(configMAX_PRIORITIES-3)
+#define MAIN_TASK_PRI   (configMAX_PRIORITIES-3)
 #define INIT_TASK_PRI   (configMAX_PRIORITIES-2)
 #define EXEC_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
 #define MAIN_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
