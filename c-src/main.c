@@ -192,9 +192,9 @@ static void main_task(void *args){
         printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
 
         DebugP_log("Sending it out over UDP now\r\n");
-  /*      for(size_t i = 0; i < UDP_PKT_CNT; ++i){
+        for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
-        }*/
+        }
     }
 
     while(1)__asm__("wfi");
@@ -233,7 +233,7 @@ static void init_task(void *args){
 
 
     DebugP_log("Init network...\r\n");
-  //  network_init(NULL);
+    network_init(NULL);
     DebugP_log("Done.\r\n");
 
 
