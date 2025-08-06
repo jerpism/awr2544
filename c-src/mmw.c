@@ -66,8 +66,7 @@ int32_t mmw_open(MMWave_Handle handle, int32_t *err){
     // size of cq samples just set to 16 bit I guess
     openCfg.dataPathCfg.cqConfig = 0b10;
 
-    // cq0 can't be disabled so set it to 32 halfwords and others to 0
-    openCfg.dataPathCfg.cq0TransSize = 32;
+    openCfg.dataPathCfg.cq0TransSize = 0;
     openCfg.dataPathCfg.cq1TransSize = 0;
     openCfg.dataPathCfg.cq2TransSize = 0;
 
@@ -82,7 +81,7 @@ int32_t mmw_open(MMWave_Handle handle, int32_t *err){
 
     // only enable 1 lane
     openCfg.laneEnCfg.laneEn = 0b1;
-    // and 1 channel
+
     openCfg.chCfg.rxChannelEn = CFG_OPEN_CHCONF_RXEN_BMASK;
     openCfg.chCfg.txChannelEn = 0b1;
 
@@ -128,7 +127,7 @@ MMWave_ProfileHandle mmw_create_profile(MMWave_Handle handle, int32_t *err){
 MMWave_ChirpHandle mmw_add_chirp(MMWave_ProfileHandle profile, int32_t *err){
     rlChirpCfg_t chirpCfg;
     memset(&chirpCfg, 0, sizeof(chirpCfg));
-    chirpCfg.chirpEndIdx = 5;
+    chirpCfg.chirpEndIdx = 0;
     chirpCfg.chirpStartIdx = 0;
     chirpCfg.profileId = 0;
     chirpCfg.startFreqVar = 0;
@@ -156,7 +155,7 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
 
     ctrlCfg.u.frameCfg[0].frameCfg.chirpStartIdx = 0;
     ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 0;
-    ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 20000000;
+    ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 200000;
     ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 0;
     ctrlCfg.u.frameCfg[0].frameCfg.triggerSelect = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 1;
