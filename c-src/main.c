@@ -179,18 +179,24 @@ static void main_task(void *args){
 
     HwiP_enable();
 
-    DebugP_log("Taking a picture\r\n");
-    mmw_start(gMmwHandle, &err);
+    while(1){
+        DebugP_log("Ready to take a picture\r\n");
+        SemaphoreP_pend(&gBtnPressedSem, SystemP_WAIT_FOREVER);
 
-    SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
-    MMWave_stop(gMmwHandle, &err);
-    CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);
-    printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
+        DebugP_log("Taking a picture\r\n");
+        mmw_start(gMmwHandle, &err);
 
-    DebugP_log("Sending it out over UDP now\r\n");
-    for(size_t i = 0; i < UDP_PKT_CNT; ++i){
-        udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
+        SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
+        MMWave_stop(gMmwHandle, &err);
+        CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);
+        printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
+
+        DebugP_log("Sending it out over UDP now\r\n");
+        for(size_t i = 0; i < UDP_PKT_CNT; ++i){
+            udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
+        }
     }
+
     while(1)__asm__("wfi");
 }
 
@@ -276,16 +282,7 @@ static void init_task(void *args){
     // Push button interrupt
     gPushButtonBaseAddr = gpio_init(&btn_isr);
 
-    // ADC sampling done semaphore
-    ret = SemaphoreP_constructBinary(&gAdcSampledSem, 0);
-    DebugP_assert(ret == 0);
-
-    // Button pressed semaphore
     ret = SemaphoreP_constructBinary(&gBtnPressedSem, 0);
-    DebugP_assert(ret == 0);
-
-    // Edma done semaphore
-    ret = SemaphoreP_constructBinary(&gEdmaDoneSem, 0);
     DebugP_assert(ret == 0);
 
     ret = SemaphoreP_constructBinary(&gFrameDoneSem, 0);
@@ -367,7 +364,7 @@ void btn_isr(void *arg){
     pending = GPIO_getHighLowLevelPendingInterrupt(gPushButtonBaseAddr, pin);
     GPIO_clearInterrupt(GPIO_PUSH_BUTTON_BASE_ADDR, pin);
     if(pending){
-      gState = !gState;
+        SemaphoreP_post(&gBtnPressedSem);
     }    
 }
 
