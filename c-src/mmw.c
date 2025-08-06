@@ -139,6 +139,29 @@ MMWave_ChirpHandle mmw_add_chirp(MMWave_ProfileHandle profile, int32_t *err){
     return MMWave_addChirp(profile, &chirpCfg, err);
 }
 
+int32_t mmw_add_chirps(MMWave_ProfileHandle profile, int32_t *err){
+    rlChirpCfg_t chirpCfg;
+    memset(&chirpCfg, 0, sizeof(chirpCfg));
+
+    chirpCfg.profileId = 0;
+    chirpCfg.startFreqVar = 0;
+    chirpCfg.freqSlopeVar = 0;
+    chirpCfg.idleTimeVar = 0;
+    chirpCfg.adcStartTimeVar = 0;
+    uint8_t txmask = 0b0001;
+    for(int i = 0; i < 4; ++i){
+        chirpCfg.chirpEndIdx = i;
+        chirpCfg.chirpStartIdx = i;
+        chirpCfg.txEnable = 0b0001;
+        MMWave_ChirpHandle chirp = MMWave_addChirp(profile, &chirpCfg,err);
+        if(chirp == NULL){
+            return -1;
+        }
+        txmask = (txmask << 1U);
+    }
+    return 0;
+}
+
 /* For now only supports configuring the first profile */
 int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MMWAVE_MAX_PROFILE], int32_t *err){
     int32_t ret = 0;
@@ -146,7 +169,7 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
 
     memset(&ctrlCfg, 0, sizeof(ctrlCfg));
     ctrlCfg.dfeDataOutputMode = MMWave_DFEDataOutputMode_FRAME;
-    ctrlCfg.numOfPhaseShiftChirps[0] = 768U;
+    ctrlCfg.numOfPhaseShiftChirps[0] = 0;
     ctrlCfg.u.frameCfg[0].profileHandle[0] = profiles[0];
 
     for(int i = 1; i < MMWAVE_MAX_PROFILE; ++i){
@@ -154,11 +177,11 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     }
 
     ctrlCfg.u.frameCfg[0].frameCfg.chirpStartIdx = 0;
-    ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 0;
-    ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 200000;
-    ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 0;
+    ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 3;
+    ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 2000000;
+    ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.triggerSelect = 1;
-    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 1;
+    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 128 / 4;
 
     ret = MMWave_config(handle, &ctrlCfg, err);
 

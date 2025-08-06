@@ -40,5 +40,7 @@ MMWave_ProfileHandle mmw_create_profile(MMWave_Handle handle, int32_t *err);
  * err contains the specific error code */
 MMWave_ChirpHandle mmw_add_chirp(MMWave_ProfileHandle profile, int32_t *err);
 
+int32_t mmw_add_chirps(MMWave_ProfileHandle profile, int32_t *err);
+
 
 #endif /* MMW_H */
