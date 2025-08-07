@@ -186,7 +186,7 @@ static void main_task(void *args){
         printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
 
         DebugP_log("calculating absolute value for each, output at 0x%p\r\n",&gAbsBuff);
-        cplx_abs(&gAbsBuff, (int16_t*)&gSampleBuff, CHIRP_DATASIZE / 2);
+        calc_abs_vals((int16_t*)&gSampleBuff, &gAbsBuff, CHIRP_DATASIZE / 2);
 
         DebugP_log("Done\r\n");
      /*   DebugP_log("Sending it out over UDP now\r\n");
