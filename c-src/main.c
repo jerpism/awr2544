@@ -63,6 +63,7 @@
 #include <gpio.h>
 #include <hwa.h>
 #include <network.h>
+#include <dataprocessing.h>
 
 //#include <sandbox.h>
 
@@ -74,14 +75,6 @@
 #define MAIN_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
 #define DPC_TASK_SIZE   (4096U/sizeof(configSTACK_DEPTH_TYPE))
 #define INIT_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
-
-/* Project related macros */
-#define SAMPLE_SIZE         (sizeof(uint16_t))
-#define CHIRP_DATASIZE      (NUM_RX_ANTENNAS * CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE)
-#define CHIRPS_PER_FRAME    128
-#define FRAME_DATASIZE      (CHIRP_DATASIZE * CHIRPS_PER_FRAME)
-#define UDP_BYTES_PER_PKT   1024
-#define UDP_PKT_CNT         (FRAME_DATASIZE / UDP_BYTES_PER_PKT)
 
 
 /* Task related global variables */
@@ -134,6 +127,7 @@ volatile bool gState = 0; /* Tracks the current (intended) state of the RSS */
 static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
 
 static uint8_t gSampleBuff[FRAME_DATASIZE] __attribute__((section(".bss.dss_l3")));
+static int16_t gAbsBuff[FRAME_DATASIZE / sizeof(int16_t)] __attribute__((section(".bss.dss_l3")));
 
 
 static inline void fail(void){
@@ -191,10 +185,14 @@ static void main_task(void *args){
         CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);
         printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
 
-        DebugP_log("Sending it out over UDP now\r\n");
+        DebugP_log("calculating absolute value for each, output at 0x%p\r\n",&gAbsBuff);
+        cplx_abs(&gAbsBuff, (int16_t*)&gSampleBuff, CHIRP_DATASIZE / 2);
+
+        DebugP_log("Done\r\n");
+     /*   DebugP_log("Sending it out over UDP now\r\n");
         for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
-        }
+        }*/
     }
 
     while(1)__asm__("wfi");
@@ -233,7 +231,7 @@ static void init_task(void *args){
 
 
     DebugP_log("Init network...\r\n");
-    network_init(NULL);
+    //network_init(NULL);
     DebugP_log("Done.\r\n");
 
 
