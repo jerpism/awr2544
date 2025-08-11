@@ -167,33 +167,41 @@ static void exec_task(void *args){
 static void main_task(void *args){
     int32_t err = 0;
     int32_t ret = 0;
+    uint8_t header[] = {1,2,3,4};
+    uint8_t footer[] = {4,3,2,1};
 
     // TODO: grab this from sysconfig somehow but for now assume bank 2 will be output
     void *hwaout = (void*)(hwa_getaddr(gHwaHandle[0])+0x4000);
 
     HwiP_enable();
+while(1){
+    ClockP_usleep(5000);
+    while(gState){
 
-    while(1){
-        DebugP_log("Ready to take a picture\r\n");
-        SemaphoreP_pend(&gBtnPressedSem, SystemP_WAIT_FOREVER);
-
+      //  DebugP_log("Ready to take a picture\r\n");
+      //  SemaphoreP_pend(&gBtnPressedSem, SystemP_WAIT_FOREVER);
+        HWA_enable(gHwaHandle[0], 1U);
         DebugP_log("Taking a picture\r\n");
         mmw_start(gMmwHandle, &err);
 
         SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
         MMWave_stop(gMmwHandle, &err);
+        HWA_enable(gHwaHandle[0], 0U);
         CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);
-        printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
+        //printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
 
-        DebugP_log("calculating absolute value for each, output at 0x%p\r\n",&gAbsBuff);
-        calc_abs_vals((int16_t*)&gSampleBuff, &gAbsBuff, CHIRP_DATASIZE / 2);
+        /*DebugP_log("calculating absolute value for each, output at 0x%p\r\n",&gAbsBuff);
+        calc_abs_vals((int16_t*)&gSampleBuff, &gAbsBuff, CHIRP_DATASIZE / 2);*/
 
-        DebugP_log("Done\r\n");
-     /*   DebugP_log("Sending it out over UDP now\r\n");
+        //DebugP_log("Sending it out over UDP now\r\n");
+        udp_send_data((void*)&header, 4);
         for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
-        }*/
+        }
+        udp_send_data((void*)&footer, 4);
+
     }
+}
 
     while(1)__asm__("wfi");
 }
@@ -231,7 +239,7 @@ static void init_task(void *args){
 
 
     DebugP_log("Init network...\r\n");
-    //network_init(NULL);
+    network_init(NULL);
     DebugP_log("Done.\r\n");
 
 
@@ -365,7 +373,8 @@ void btn_isr(void *arg){
     pending = GPIO_getHighLowLevelPendingInterrupt(gPushButtonBaseAddr, pin);
     GPIO_clearInterrupt(GPIO_PUSH_BUTTON_BASE_ADDR, pin);
     if(pending){
-        SemaphoreP_post(&gBtnPressedSem);
+        //SemaphoreP_post(&gBtnPressedSem);
+        gState = !gState;
     }    
 }
 
