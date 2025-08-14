@@ -177,11 +177,11 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     }
 
     ctrlCfg.u.frameCfg[0].frameCfg.chirpStartIdx = 0;
-    ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 3;
+    ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 0;
     ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 2000000;
     ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.triggerSelect = 1;
-    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 128 / 4;
+    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 128;
 
     ret = MMWave_config(handle, &ctrlCfg, err);
 
