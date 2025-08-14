@@ -65,7 +65,9 @@
 #include <network.h>
 #include <dataprocessing.h>
 
-//#include <sandbox.h>
+#ifdef SANDBOX
+#include <sandbox.h>
+#endif
 
 /* Task related macros */
 #define EXEC_TASK_PRI   (configMAX_PRIORITIES-1)     // must be higher than INIT_TASK_PRI
@@ -152,6 +154,8 @@ void hwa_callback(uint32_t intrIdx, uint32_t paramSet, void *arg){
 
 
 static void frame_done(Edma_IntrHandle handle, void *args){
+        HWA_enable(gHwaHandle[0], 0);
+        edma_reset_hwal3_param();
         SemaphoreP_post(&gFrameDoneSem);
 }
 
@@ -169,6 +173,8 @@ static void main_task(void *args){
     int32_t ret = 0;
     uint8_t header[] = {1,2,3,4};
     uint8_t footer[] = {4,3,2,1};
+    static bool firstrun = 1;
+    int16_t tmp = 0;
 
     // TODO: grab this from sysconfig somehow but for now assume bank 2 will be output
     void *hwaout = (void*)(hwa_getaddr(gHwaHandle[0])+0x4000);
@@ -178,28 +184,21 @@ while(1){
     ClockP_usleep(5000);
     while(gState){
 
-      //  DebugP_log("Ready to take a picture\r\n");
-      //  SemaphoreP_pend(&gBtnPressedSem, SystemP_WAIT_FOREVER);
+        HWA_reset(gHwaHandle[0]);
         HWA_enable(gHwaHandle[0], 1U);
+        // Load bearing debug log
         DebugP_log("Taking a picture\r\n");
         mmw_start(gMmwHandle, &err);
 
         SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
         MMWave_stop(gMmwHandle, &err);
-        HWA_enable(gHwaHandle[0], 0U);
-        CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);
-        //printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
-
-        /*DebugP_log("calculating absolute value for each, output at 0x%p\r\n",&gAbsBuff);
-        calc_abs_vals((int16_t*)&gSampleBuff, &gAbsBuff, CHIRP_DATASIZE / 2);*/
-
-        //DebugP_log("Sending it out over UDP now\r\n");
+       // CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);   
+     
         udp_send_data((void*)&header, 4);
         for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
         }
         udp_send_data((void*)&footer, 4);
-
     }
 }
 
