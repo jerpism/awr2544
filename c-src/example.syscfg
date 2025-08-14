@@ -88,7 +88,6 @@ cbuff1.edmaConfig                  = edma1;
 edma1.regionId                     = 0;
 edma1.initParamSet                 = "TRUE";
 edma1.instance                     = "EDMA_DSS_A";
-edma1.edmaRmDmaCh[0].resourceType  = scripting.forceWrite("ownDmaCh");
 edma1.edmaRmDmaCh[0].$name         = "CONFIG_EDMA_RM0";
 edma1.edmaRmQdmaCh[0].$name        = "CONFIG_EDMA_RM1";
 edma1.edmaRmTcc[0].$name           = "CONFIG_EDMA_RM2";
