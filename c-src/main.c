@@ -144,17 +144,16 @@ void edma_callback(Edma_IntrHandle handle, void *args){
 
 
 void hwa_callback(uint32_t intrIdx, uint32_t paramSet, void *arg){
-    HWA_reset(gHwaHandle[0]);
+    //HWA_reset(gHwaHandle[0]);
 
     // TODO: don't blindly guess channel number here but that's an issue for future me
     // and it should always be 3 anyways
-    EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
+    //EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
 
 }
 
 
 static void frame_done(Edma_IntrHandle handle, void *args){
-        HWA_enable(gHwaHandle[0], 0);
         edma_reset_hwal3_param();
         SemaphoreP_post(&gFrameDoneSem);
 }
@@ -173,8 +172,6 @@ static void main_task(void *args){
     int32_t ret = 0;
     uint8_t header[] = {1,2,3,4};
     uint8_t footer[] = {4,3,2,1};
-    static bool firstrun = 1;
-    int16_t tmp = 0;
 
     // TODO: grab this from sysconfig somehow but for now assume bank 2 will be output
     void *hwaout = (void*)(hwa_getaddr(gHwaHandle[0])+0x4000);
@@ -183,22 +180,19 @@ static void main_task(void *args){
 while(1){
     ClockP_usleep(5000);
     while(gState){
-
-        HWA_reset(gHwaHandle[0]);
-        HWA_enable(gHwaHandle[0], 1U);
-        // Load bearing debug log
-        DebugP_log("Taking a picture\r\n");
         mmw_start(gMmwHandle, &err);
 
         SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
         MMWave_stop(gMmwHandle, &err);
-       // CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);   
      
         udp_send_data((void*)&header, 4);
         for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
         }
         udp_send_data((void*)&footer, 4);
+        ClockP_usleep(5000);
+
+
     }
 }
 
@@ -229,13 +223,6 @@ static void init_task(void *args){
 
     DebugP_log("Init task launched\r\n");
 
-    DebugP_log("Init HWA...\r\n");
-    // assume for now that input memory will be at HWA base
-    uint32_t hwaaddr = (uint32_t)SOC_virtToPhy((void*)hwa_getaddr(gHwaHandle[0]));
-    hwa_init(gHwaHandle[0], &hwa_callback);
-    DebugP_log("HWA address is %#x\r\n",hwaaddr);
-    DebugP_log("Done.\r\n");
-
 
     DebugP_log("Init network...\r\n");
     network_init(NULL);
@@ -265,8 +252,8 @@ static void init_task(void *args){
 
     // and EDMA
     DebugP_log("Init edma...\r\n");
-    edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
-    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  CHIRP_DATASIZE,  CHIRPS_PER_FRAME, 1);
+  //  edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, CHIRPS, 1);
+    edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)adcaddr, CHIRP_DATASIZE, CHIRPS_PER_FRAME, 1);
     DebugP_log("Done.\r\n");
 
 
@@ -380,7 +367,8 @@ void btn_isr(void *arg){
 
 void chirp_isr(void *arg){
     int32_t err;
-    edma_write();
+    EDMA_setEvtRegion(EDMA_getBaseAddr(gEdmaHandle[0]), 0, 3);
+
 }
 #endif
 
