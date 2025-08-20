@@ -183,22 +183,35 @@ static void main_task(void *args){
 while(1){
     ClockP_usleep(5000);
     while(gState){
+        // This might be unnecessary but we have encountered situations
+        // in which the system ends up locked with interrupts seemingly disabled
+        // so make sure they are re-enabled at the start of each frame 
+        HwiP_enable();
 
         HWA_reset(gHwaHandle[0]);
         HWA_enable(gHwaHandle[0], 1U);
-        // Load bearing debug log
-        DebugP_log("Taking a picture\r\n");
+
+
         mmw_start(gMmwHandle, &err);
 
-        SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
+        // Make sure wait ticks is not set to SystemP_WAIT_FOREVER
+        // At times the device seems to end up in a deadlock forever looping in the idle task
+        // and having a timeout here makes sure that the system never ends up stuck here 
+        // this does mean that in some cases a duplicate frame may be sent but operation 
+        // seems to resume normally afterwards
+        SemaphoreP_pend(&gFrameDoneSem, 500);
+
         MMWave_stop(gMmwHandle, &err);
-       // CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);   
      
         udp_send_data((void*)&header, 4);
         for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
         }
         udp_send_data((void*)&footer, 4);
+
+        ClockP_usleep(5000);
+
+
     }
 }
 
@@ -332,14 +345,11 @@ static void init_task(void *args){
     if(ret != 0){
         DebugP_logError("Failed to add chirps\r\n");
     }
-    /*if(chirp == NULL){
-        mmw_printerr("Failed to add chirp", err);
-        fail();
-    }*/
+ 
 
     ret = mmw_config(gMmwHandle, gMmwProfiles, &err);
     if (ret != 0){
-        mmw_printerr("Failed to configure", err);
+        mmw_printerr("Failed to configure\r\n", err);
         fail();
     }
 
@@ -373,6 +383,7 @@ void btn_isr(void *arg){
     GPIO_clearInterrupt(GPIO_PUSH_BUTTON_BASE_ADDR, pin);
     if(pending){
         //SemaphoreP_post(&gBtnPressedSem);
+        printf("Button\r\n");
         gState = !gState;
     }    
 }
