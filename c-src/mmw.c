@@ -177,11 +177,11 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     }
 
     ctrlCfg.u.frameCfg[0].frameCfg.chirpStartIdx = 0;
-    ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 3;
+    ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 0;
     ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 2000000;
     ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.triggerSelect = 1;
-    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 128 / 4;
+    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 128;
 
     ret = MMWave_config(handle, &ctrlCfg, err);
 
@@ -194,10 +194,10 @@ int32_t mmw_start(MMWave_Handle handle, int32_t *err){
     MMWave_CalibrationCfg calibCfg;
     memset(&calibCfg, 0, sizeof(calibCfg));
     calibCfg.dfeDataOutputMode = MMWave_DFEDataOutputMode_FRAME;
-    calibCfg.u.chirpCalibrationCfg.enableCalibration = 0;
+    calibCfg.u.chirpCalibrationCfg.enableCalibration = 1;
     calibCfg.u.chirpCalibrationCfg.enablePeriodicity = 0;
     calibCfg.u.chirpCalibrationCfg.periodicTimeInFrames = 0;
-    calibCfg.u.chirpCalibrationCfg.reportEn = 1;
+    calibCfg.u.chirpCalibrationCfg.reportEn = 0;
 
     ret = MMWave_start(handle, &calibCfg, err);
 

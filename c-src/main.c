@@ -63,8 +63,11 @@
 #include <gpio.h>
 #include <hwa.h>
 #include <network.h>
+#include <dataprocessing.h>
 
-//#include <sandbox.h>
+#ifdef SANDBOX
+#include <sandbox.h>
+#endif
 
 /* Task related macros */
 #define EXEC_TASK_PRI   (configMAX_PRIORITIES-1)     // must be higher than INIT_TASK_PRI
@@ -74,14 +77,6 @@
 #define MAIN_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
 #define DPC_TASK_SIZE   (4096U/sizeof(configSTACK_DEPTH_TYPE))
 #define INIT_TASK_SIZE  (4096U/sizeof(configSTACK_DEPTH_TYPE))
-
-/* Project related macros */
-#define SAMPLE_SIZE         (sizeof(uint16_t))
-#define CHIRP_DATASIZE      (NUM_RX_ANTENNAS * CFG_PROFILE_NUMADCSAMPLES * SAMPLE_SIZE)
-#define CHIRPS_PER_FRAME    128
-#define FRAME_DATASIZE      (CHIRP_DATASIZE * CHIRPS_PER_FRAME)
-#define UDP_BYTES_PER_PKT   1024
-#define UDP_PKT_CNT         (FRAME_DATASIZE / UDP_BYTES_PER_PKT)
 
 
 /* Task related global variables */
@@ -134,6 +129,7 @@ volatile bool gState = 0; /* Tracks the current (intended) state of the RSS */
 static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
 
 static uint8_t gSampleBuff[FRAME_DATASIZE] __attribute__((section(".bss.dss_l3")));
+static int16_t gAbsBuff[FRAME_DATASIZE / sizeof(int16_t)] __attribute__((section(".bss.dss_l3")));
 
 
 static inline void fail(void){
@@ -158,6 +154,8 @@ void hwa_callback(uint32_t intrIdx, uint32_t paramSet, void *arg){
 
 
 static void frame_done(Edma_IntrHandle handle, void *args){
+        HWA_enable(gHwaHandle[0], 0);
+        edma_reset_hwal3_param();
         SemaphoreP_post(&gFrameDoneSem);
 }
 
@@ -173,29 +171,49 @@ static void exec_task(void *args){
 static void main_task(void *args){
     int32_t err = 0;
     int32_t ret = 0;
+    uint8_t header[] = {1,2,3,4};
+    uint8_t footer[] = {4,3,2,1};
+    static bool firstrun = 1;
+    int16_t tmp = 0;
 
     // TODO: grab this from sysconfig somehow but for now assume bank 2 will be output
     void *hwaout = (void*)(hwa_getaddr(gHwaHandle[0])+0x4000);
 
     HwiP_enable();
+while(1){
+    ClockP_usleep(5000);
+    while(gState){
+        // This might be unnecessary but we have encountered situations
+        // in which the system ends up locked with interrupts seemingly disabled
+        // so make sure they are re-enabled at the start of each frame 
+        HwiP_enable();
 
-    while(1){
-        DebugP_log("Ready to take a picture\r\n");
-        SemaphoreP_pend(&gBtnPressedSem, SystemP_WAIT_FOREVER);
+        HWA_reset(gHwaHandle[0]);
+        HWA_enable(gHwaHandle[0], 1U);
 
-        DebugP_log("Taking a picture\r\n");
+
         mmw_start(gMmwHandle, &err);
 
-        SemaphoreP_pend(&gFrameDoneSem, SystemP_WAIT_FOREVER);
-        MMWave_stop(gMmwHandle, &err);
-        CacheP_wbInv(&gSampleBuff, FRAME_DATASIZE, CacheP_TYPE_ALL);
-        printf("Frame should be at 0x%p now\r\n",&gSampleBuff);
+        // Make sure wait ticks is not set to SystemP_WAIT_FOREVER
+        // At times the device seems to end up in a deadlock forever looping in the idle task
+        // and having a timeout here makes sure that the system never ends up stuck here 
+        // this does mean that in some cases a duplicate frame may be sent but operation 
+        // seems to resume normally afterwards
+        SemaphoreP_pend(&gFrameDoneSem, 500);
 
-        DebugP_log("Sending it out over UDP now\r\n");
+        MMWave_stop(gMmwHandle, &err);
+     
+        udp_send_data((void*)&header, 4);
         for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
         }
+        udp_send_data((void*)&footer, 4);
+
+        //ClockP_usleep(5000);
+
+
     }
+}
 
     while(1)__asm__("wfi");
 }
@@ -327,14 +345,11 @@ static void init_task(void *args){
     if(ret != 0){
         DebugP_logError("Failed to add chirps\r\n");
     }
-    /*if(chirp == NULL){
-        mmw_printerr("Failed to add chirp", err);
-        fail();
-    }*/
+ 
 
     ret = mmw_config(gMmwHandle, gMmwProfiles, &err);
     if (ret != 0){
-        mmw_printerr("Failed to configure", err);
+        mmw_printerr("Failed to configure\r\n", err);
         fail();
     }
 
@@ -367,7 +382,9 @@ void btn_isr(void *arg){
     pending = GPIO_getHighLowLevelPendingInterrupt(gPushButtonBaseAddr, pin);
     GPIO_clearInterrupt(GPIO_PUSH_BUTTON_BASE_ADDR, pin);
     if(pending){
-        SemaphoreP_post(&gBtnPressedSem);
+        //SemaphoreP_post(&gBtnPressedSem);
+        printf("Button\r\n");
+        gState = !gState;
     }    
 }
 

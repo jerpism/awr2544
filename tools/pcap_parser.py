@@ -10,42 +10,46 @@ args = parser.parse_args()
 filename=args.fname
 range_res = 0.39
 
-counter=0
 udpcounter=0
 chirpcounter=0
-pktbuf=0
+pktbuf = []
 
-rx1_comp = np.zeros(128, dtype=np.complex128)
-rx2_comp = np.zeros(128, dtype=np.complex128)
-rx3_comp = np.zeros(128, dtype=np.complex128)
-rx4_comp = np.zeros(128, dtype=np.complex128)
+rx1_cmplx = np.zeros(128, dtype=np.complex128)
+rx2_cmplx = np.zeros(128, dtype=np.complex128)
+rx3_cmplx = np.zeros(128, dtype=np.complex128)
+rx4_cmplx = np.zeros(128, dtype=np.complex128)
+
+def getChirpData(buf,rx1,rx2,rx3,rx4):
+    rx1_b = buf[-2][:512]
+    rx2_b = buf[-2][512:]
+    rx3_b = buf[-1][:512]
+    rx4_b = buf[-1][512:]
+
+    for i in range(len(rx1)):
+        idx = 4*i
+        rx1[i] = int.from_bytes(rx1_b[idx:idx+2],"little",signed=True) + (1j*int.from_bytes(rx1_b[idx+2:idx+4],"little",signed=True))
+        rx2[i] = int.from_bytes(rx2_b[idx:idx+2],"little",signed=True) + (1j*int.from_bytes(rx2_b[idx+2:idx+4],"little",signed=True))
+        rx3[i] = int.from_bytes(rx3_b[idx:idx+2],"little",signed=True) + (1j*int.from_bytes(rx3_b[idx+2:idx+4],"little",signed=True))
+        rx4[i] = int.from_bytes(rx4_b[idx:idx+2],"little",signed=True) + (1j*int.from_bytes(rx4_b[idx+2:idx+4],"little",signed=True))
+    
+
+    return
+
 
 #compute x axis range values
-ranges = np.arange(rx1_comp.shape[0]) * range_res
+ranges = np.arange(rx1_cmplx.shape[0]) * range_res
 
 plt.ion()
 fig, axs = plt.subplots(2,2)
 lines = []
-fig.suptitle("Each rx for chrip: ")
 for ax in axs.flat:
     ax.set(xlabel='range', ylabel='signal component amp')
     ax.label_outer()
     line, = ax.plot(np.zeros(128))
     lines.append(line)
 
+for ts, pkt in dpkt.pcapng.Reader(open(filename,'rb')):
 
-def getChripData(buf,rx1,rx2):
-    for i in range(len(rx1)):
-        idx = 4*i
-        rx1[i] = int.from_bytes(buf[idx:idx+2],"little",signed=True) + (1j*int.from_bytes(buf[idx+2:idx+4],"little",signed=True))
-        idx = 512 + 4*i
-        rx2[i] = int.from_bytes(buf[idx:idx+2],"little",signed=True) + (1j*int.from_bytes(buf[idx+2:idx+4],"little",signed=True))
-    return
-
-
-for ts, pkt in dpkt.pcap.Reader(open(filename,'rb')):
-
-    counter+=1
     eth=dpkt.ethernet.Ethernet(pkt) 
     if eth.type!=dpkt.ethernet.ETH_TYPE_IP:
        continue
@@ -53,19 +57,23 @@ for ts, pkt in dpkt.pcap.Reader(open(filename,'rb')):
     ip=eth.data
 
     if ip.p==dpkt.ip.IP_PROTO_UDP:
-        #drop first packet
-        if (udpcounter>=1):
-            pktbuf = ip.data.data
-            if (udpcounter%2 == 1):
-                getChripData(pktbuf,rx1_comp,rx2_comp)
-            if (udpcounter%2 == 0):
-                getChripData(pktbuf,rx3_comp,rx4_comp)
-                chirpcounter+=1
-                #when data from each rx is done, plot new data
-                string = "Each rx for chirp: " + str(chirpcounter)
+        header = b"\x01\x02\x03\x04"
+        footer = b"\x04\x03\x02\x01"
+        payload = ip.data.data
+        if (payload != header and payload != footer and payload != 0):
+            pktbuf.append(ip.data.data)
+            chirpcounter += 1
+            if chirpcounter == 256:
+                #after receiving whole frame, plot data.
+                #print(f"pktbuf len: {len(pktbuf)}, pktbuf type: {type(pktbuf)}, pktbuf[0] type: {type(pktbuf[0])}")
+                string = f"Each rx for pkt: {udpcounter}"
                 fig.suptitle(string)
+
+                #Currently getChirpData fetches only last chirp for debugging purposes
+                getChirpData(pktbuf,rx1_cmplx,rx2_cmplx,rx3_cmplx,rx4_cmplx)
+
                 for i in range(4):
-                    cmplx_sets = [rx1_comp,rx2_comp,rx3_comp,rx4_comp]
+                    cmplx_sets = [rx1_cmplx,rx2_cmplx,rx3_cmplx,rx4_cmplx]
                     lines[i].set_ydata(np.abs(cmplx_sets[i]))
                     lines[i].set_xdata(ranges)
                 for ax in axs.flat:
@@ -74,10 +82,8 @@ for ts, pkt in dpkt.pcap.Reader(open(filename,'rb')):
                 fig.canvas.draw()
                 fig.canvas.flush_events()
 
-        udpcounter+=1
+                pktbuf = []
+                chirpcounter = 0
+            
 
-'''
-print("all pkts counter: ", counter," udpcounter: ", udpcounter)
-print("pktbuf, size:", len(pktbuf)," type:",type(pktbuf)," type of element:",type(pktbuf[0:1]))
-print("rx1_comp, size:", len(rx1_comp)," type:",type(rx1_comp)," type of element:",type(rx1_comp[0]))
-'''
+        udpcounter+=1
