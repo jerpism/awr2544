@@ -141,6 +141,7 @@ static inline void fail(void){
 
 
 void edma_callback(Edma_IntrHandle handle, void *args){
+
 }
 
 void rows_transferred(Edma_IntrHandle handle, void *args){
@@ -290,6 +291,7 @@ static void init_task(void *args){
     edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
     edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  CHIRP_DATASIZE,  CHIRPS_PER_FRAME, 1);
     edma_configure_dfft_rows(gEdmaHandle[0], &rows_transferred, (void*)hwaaddr, (void*)&gSampleBuff, sizeof(uint32_t) * 128, DOPPLER_ROWS / 2, 2);
+    edma_configure_dfft_cols(gEdmaHandle[0], &cols_transferred, (void*)hwaaddr, (void*)&gSampleBuff, CPLX_SAMPLE_SIZE, DOPPLER_ROWS, DOPPLER_COLUMNS / 2);
     DebugP_log("Done.\r\n");
 
 
