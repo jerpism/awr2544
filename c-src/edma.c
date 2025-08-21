@@ -15,10 +15,13 @@
 
 #include <edma.h>
 #include <hwa.h>
+#include <cfg.h>
 
 
 static Edma_IntrObject gIntrObjAdcHwa;
 static Edma_IntrObject gIntrObjHwaL3;
+static Edma_IntrObject gIntrObjDfftRows;
+
 
 static uint32_t gbaseaddr;
 static uint32_t ghwal3param;
@@ -42,6 +45,69 @@ void edma_reset_hwal3_param(){
     EDMA_setPaRAM(gbaseaddr, ghwal3param, &edmaparam);
 }
 
+void edma_write_dfft_rows(){
+    EDMA_setEvtRegion(gbaseaddr, 0, 4);
+}
+
+
+void edma_configure_dfft_rows(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t acnt, uint16_t bcnt, uint16_t ccnt){
+    uint32_t base = 0;
+    uint32_t region = 0;
+    uint32_t ch = 0;
+    uint32_t tcc = 0;
+    uint32_t param = 0;
+    int32_t ret = 0;
+    uint8_t *srcp = (uint8_t*)src;
+    uint8_t *dstp = (uint8_t*)dst;
+    EDMACCPaRAMEntry edmaparam;
+
+
+    DebugP_log("EDMA: Configuring doppler rows to hwa\r\n");
+    base = EDMA_getBaseAddr(handle);
+    DebugP_assert(base != 0);
+
+    region = EDMA_getRegionId(handle);
+    DebugP_assert(region < SOC_EDMA_NUM_REGIONS);
+
+    ch = 4;
+    ret = EDMA_allocDmaChannel(handle, &ch);
+    DebugP_assert(ret == 0);
+
+    tcc = EDMA_RESOURCE_ALLOC_ANY;
+    ret = EDMA_allocTcc(handle, &tcc);
+    DebugP_assert(ret == 0);
+
+    param = EDMA_RESOURCE_ALLOC_ANY;
+    ret = EDMA_allocParam(handle, &param);
+
+    DebugP_log("EDMA: base: %#x, region: %u, ch: %u, tcc: %u, param: %u\r\n",base,region,ch,tcc,param);
+
+    EDMA_configureChannelRegion(base, region, EDMA_CHANNEL_TYPE_DMA, ch, tcc , param, 1);
+    EDMA_ccPaRAMEntry_init(&edmaparam);
+    edmaparam.srcAddr       = (uint32_t) SOC_virtToPhy(srcp);
+    edmaparam.destAddr      = (uint32_t) SOC_virtToPhy(dstp);
+    edmaparam.aCnt          = (uint16_t) acnt;     
+    edmaparam.bCnt          = (uint16_t) bcnt;    
+    edmaparam.cCnt          = (uint16_t) ccnt;
+    edmaparam.bCntReload    = (uint16_t) bcnt;
+    edmaparam.srcBIdx       = (int16_t) EDMA_PARAM_BIDX(NUM_RX_ANTENNAS * CHIRPS_PER_FRAME * sizeof(uint32_t));
+    edmaparam.destBIdx      = (int16_t) EDMA_PARAM_BIDX(acnt);
+    edmaparam.srcCIdx       = acnt;
+    edmaparam.destCIdx      = acnt;
+    edmaparam.linkAddr      = EDMA_TPCC_OPT(param); 
+    edmaparam.srcBIdxExt    = (int8_t) EDMA_PARAM_BIDX_EXT(NUM_RX_ANTENNAS * CHIRPS_PER_FRAME * sizeof(uint32_t));
+    edmaparam.destBIdxExt   = (int8_t) EDMA_PARAM_BIDX_EXT(acnt);
+    edmaparam.opt |= (EDMA_OPT_TCINTEN_MASK | EDMA_OPT_ITCINTEN_MASK | (1U << EDMA_OPT_SYNCDIM_SHIFT) | ((((uint32_t)tcc)<< EDMA_OPT_TCC_SHIFT)& EDMA_OPT_TCC_MASK));
+    EDMA_setPaRAM(base, param, &edmaparam);
+
+    gIntrObjDfftRows.tccNum = tcc;
+    gIntrObjDfftRows.cbFxn = cb;
+    gIntrObjDfftRows.appData = (void*)0;
+    EDMA_registerIntr(handle, &gIntrObjDfftRows);
+    EDMA_enableEvtIntrRegion(base, region, ch);
+    EDMA_enableTransferRegion(base, region, ch, EDMA_TRIG_MODE_EVENT);
+}
+
 
 void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, uint16_t acnt, uint16_t bcnt, uint16_t ccnt){
     uint32_t base = 0;
@@ -49,7 +115,6 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     uint32_t ch = 0;
     uint32_t tcc = 0;
     uint32_t param = 0;
-    uint32_t param2 = 0;
     int32_t ret = 0;
     uint8_t *srcp = (uint8_t*)src;
     uint8_t *dstp = (uint8_t*)dst;

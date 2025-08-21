@@ -129,6 +129,7 @@ volatile bool gState = 0; /* Tracks the current (intended) state of the RSS */
 static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
 
 static uint8_t gSampleBuff[FRAME_DATASIZE] __attribute__((section(".bss.dss_l3")));
+static uint32_t gDopplerBuff[NUM_RX_ANTENNAS][DOPPLER_ROWS][DOPPLER_COLUMNS] __attribute__((section(".bss.dss_l3")));
 static int16_t gAbsBuff[FRAME_DATASIZE / sizeof(int16_t)] __attribute__((section(".bss.dss_l3")));
 
 
@@ -142,6 +143,11 @@ static inline void fail(void){
 void edma_callback(Edma_IntrHandle handle, void *args){
 }
 
+void rows_transferred(Edma_IntrHandle handle, void *args){
+    printf("Moved half of the rows\r\n");
+    hwa_process_dfft_rows(gHwaHandle[0],  NULL);
+    
+}
 
 void hwa_callback(uint32_t intrIdx, uint32_t paramSet, void *arg){
     HWA_reset(gHwaHandle[0]);
@@ -182,7 +188,7 @@ static void main_task(void *args){
     HwiP_enable();
 while(1){
     ClockP_usleep(5000);
-    while(gState){
+   // while(gState){
         // This might be unnecessary but we have encountered situations
         // in which the system ends up locked with interrupts seemingly disabled
         // so make sure they are re-enabled at the start of each frame 
@@ -202,17 +208,20 @@ while(1){
         SemaphoreP_pend(&gFrameDoneSem, 500);
 
         MMWave_stop(gMmwHandle, &err);
+        edma_write_dfft_rows();
+        while(1)__asm__("wfi");
+
      
-        udp_send_data((void*)&header, 4);
+    /*    udp_send_data((void*)&header, 4);
         for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
         }
         udp_send_data((void*)&footer, 4);
 
-        //ClockP_usleep(5000);
+        */
 
 
-    }
+   // }
 }
 
     while(1)__asm__("wfi");
@@ -251,7 +260,7 @@ static void init_task(void *args){
 
 
     DebugP_log("Init network...\r\n");
-    network_init(NULL);
+   // network_init(NULL);
     DebugP_log("Done.\r\n");
 
 
@@ -280,6 +289,7 @@ static void init_task(void *args){
     DebugP_log("Init edma...\r\n");
     edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
     edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  CHIRP_DATASIZE,  CHIRPS_PER_FRAME, 1);
+    edma_configure_dfft_rows(gEdmaHandle[0], &rows_transferred, (void*)hwaaddr, (void*)&gSampleBuff, sizeof(uint32_t) * 128, DOPPLER_ROWS / 2, 2);
     DebugP_log("Done.\r\n");
 
 
