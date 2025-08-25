@@ -65,6 +65,9 @@
 #include <network.h>
 #include <dataprocessing.h>
 
+extern void uart_dump_samples(void *buff, size_t n);
+
+
 #ifdef SANDBOX
 #include <sandbox.h>
 #endif
@@ -127,9 +130,9 @@ SemaphoreP_Object gFrameDoneSem;
 /* Rest of them */
 volatile bool gState = 0; /* Tracks the current (intended) state of the RSS */
 static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
-
+#include "BIG.h"
 static uint8_t gSampleBuff[FRAME_DATASIZE] __attribute__((section(".bss.dss_l3")));
-static uint32_t gDopplerBuff[NUM_RX_ANTENNAS][DOPPLER_ROWS][DOPPLER_COLUMNS] __attribute__((section(".bss.dss_l3")));
+static uint32_t gDopplerBuff[128][128] __attribute__((section(".bss.dss_l3")));
 static int16_t gAbsBuff[FRAME_DATASIZE / sizeof(int16_t)] __attribute__((section(".bss.dss_l3")));
 
 
@@ -195,7 +198,7 @@ while(1){
         HWA_enable(gHwaHandle[0], 1U);
 
 
-        mmw_start(gMmwHandle, &err);
+/*        mmw_start(gMmwHandle, &err);
 
         // Make sure wait ticks is not set to SystemP_WAIT_FOREVER
         // At times the device seems to end up in a deadlock forever looping in the idle task
@@ -204,8 +207,25 @@ while(1){
         // seems to resume normally afterwards
         SemaphoreP_pend(&gFrameDoneSem, 500);
 
-        MMWave_stop(gMmwHandle, &err);
-        calc_doppler_fft(gHwaHandle[0], (void*)gSampleBuff, hwain);
+        MMWave_stop(gMmwHandle, &err);*/
+        printf("Doppler addr %#x\r\n",&gDopplerBuff);
+        printf("Test address %#x\r\n", &gFrameTest);
+  
+        calc_doppler_fft(gHwaHandle[0], (void*)gFrameTest, hwain);
+        ClockP_usleep(50000);
+        uint32_t *doop = &gDopplerBuff;
+        for(size_t i = 0; i < 64*128; ++i){
+            doop[i] = *((uint32_t*)hwain+0x2000 + i);
+        }
+
+        calc_doppler_fft(gHwaHandle[0], (void*)gFrameTest + 0x4000, hwain);
+        ClockP_usleep(50000);
+ 
+        for(size_t i = 0; i < 64*128; ++i){
+            doop[i+64*128] = *((uint32_t*)hwain+0x2000 +i);
+        }      
+        uint32_t *res = gDopplerBuff[23];
+        uart_dump_samples(res, 128);
         while(1)__asm__("wfi");
 
      
