@@ -162,7 +162,7 @@ uint32_t hwa_getaddr(HWA_Handle handle){
 }
 
 
-void hwa_process_dfft_rows(HWA_Handle handle, HWA_ParamDone_IntHandlerFuncPTR cb){
+void hwa_process_dfft(HWA_Handle handle, HWA_ParamDone_IntHandlerFuncPTR cb){
     HWA_configParamSet(handle, 0, &HwaParamConfig[1], NULL);
     HWA_enable(handle, 1U);
     HWA_reset(handle);
