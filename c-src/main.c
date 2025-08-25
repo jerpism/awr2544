@@ -144,11 +144,6 @@ void edma_callback(Edma_IntrHandle handle, void *args){
 
 }
 
-void rows_transferred(Edma_IntrHandle handle, void *args){
-    printf("Moved half of the rows\r\n");
-    hwa_process_dfft_rows(gHwaHandle[0],  NULL);
-    
-}
 
 void hwa_callback(uint32_t intrIdx, uint32_t paramSet, void *arg){
     HWA_reset(gHwaHandle[0]);
@@ -185,6 +180,7 @@ static void main_task(void *args){
 
     // TODO: grab this from sysconfig somehow but for now assume bank 2 will be output
     void *hwaout = (void*)(hwa_getaddr(gHwaHandle[0])+0x4000);
+    void *hwain = (void*)(hwa_getaddr(gHwaHandle[0]));
 
     HwiP_enable();
 while(1){
@@ -209,7 +205,7 @@ while(1){
         SemaphoreP_pend(&gFrameDoneSem, 500);
 
         MMWave_stop(gMmwHandle, &err);
-        edma_write_dfft_rows();
+        calc_doppler_fft(gHwaHandle[0], (void*)gSampleBuff, hwain);
         while(1)__asm__("wfi");
 
      
@@ -290,8 +286,7 @@ static void init_task(void *args){
     DebugP_log("Init edma...\r\n");
     edma_configure(gEdmaHandle[0],&edma_callback, (void*)hwaaddr, (void*)adcaddr, CHIRP_DATASIZE, 1, 1);
     edma_configure_hwa_l3(gEdmaHandle[0], &frame_done, (void*)&gSampleBuff, (void*)(hwaaddr+0x4000),  CHIRP_DATASIZE,  CHIRPS_PER_FRAME, 1);
-    edma_configure_dfft_rows(gEdmaHandle[0], &rows_transferred, (void*)hwaaddr, (void*)&gSampleBuff, sizeof(uint32_t) * 128, DOPPLER_ROWS / 2, 2);
-    edma_configure_dfft_cols(gEdmaHandle[0], &cols_transferred, (void*)hwaaddr, (void*)&gSampleBuff, CPLX_SAMPLE_SIZE, DOPPLER_ROWS, DOPPLER_COLUMNS / 2);
+   
     DebugP_log("Done.\r\n");
 
 

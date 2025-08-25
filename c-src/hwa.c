@@ -89,10 +89,10 @@ static HWA_ParamConfig HwaParamConfig[] =
 		.source =
         {  // TODO: get these from macros in some clever way
             .srcAddr = 0,
-            .srcAcnt = CHIRPS_PER_FRAME - 1,
+            .srcAcnt = 128 - 1,
             .srcAIdx = 4,
             .srcBcnt = 64,
-            .srcBIdx = CHIRPS_PER_FRAME * 4,
+            .srcBIdx = 128 * 4,
             .srcAcircShift = 0,
             .srcAcircShiftWrap = 0,
             .srcCircShiftWrap3 = HWA_FEATURE_BIT_DISABLE,
@@ -106,9 +106,9 @@ static HWA_ParamConfig HwaParamConfig[] =
 		.dest =
         {
             .dstAddr = 0x8000,
-            .dstAcnt = CHIRPS_PER_FRAME -1,
+            .dstAcnt = 128 -1,
             .dstAIdx = 4,
-            .dstBIdx = CHIRPS_PER_FRAME * 4,
+            .dstBIdx = 128 * 4,
             .dstRealComplex = HWA_SAMPLES_FORMAT_COMPLEX,
             .dstWidth = HWA_SAMPLES_WIDTH_16BIT,
             .dstSign = HWA_SAMPLES_SIGNED,
@@ -163,6 +163,8 @@ uint32_t hwa_getaddr(HWA_Handle handle){
 
 
 void hwa_process_dfft(HWA_Handle handle, HWA_ParamDone_IntHandlerFuncPTR cb){
+        HWA_configCommon(handle, &HwaCommonConfig[0]);
+
     HWA_configParamSet(handle, 0, &HwaParamConfig[1], NULL);
     HWA_enable(handle, 1U);
     HWA_reset(handle);
