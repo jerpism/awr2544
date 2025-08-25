@@ -6,6 +6,11 @@
 #include "ti_drivers_config.h"
 #define SQUARE_I16(x) (((int32_t)x) * ((int32_t)x))
 
+#define RANGEBINS (CFG_PROFILE_NUMADCSAMPLES / 2) 
+// For how many rangebins can we calculate the doppler at once
+// the HWA can fit 32k of input at once 
+#define ITERATION_MAX (RANGEBINS / 2)   
+
 // Input/output MUST be 4 byte aligned
 void calc_doppler_fft(HWA_Handle hwahandle, void *in, void *out){
     //TODO: change these to macros even though it's unlikely they'll change.
@@ -14,9 +19,9 @@ void calc_doppler_fft(HWA_Handle hwahandle, void *in, void *out){
     uint32_t *inp = (uint32_t*)in;
     uint32_t *outp = (uint32_t*)out;
 
-    for(size_t i = 0; i < 64; ++i){
-        for(size_t j = 0; j < 128; ++j){
-            outp[i * 128 + j] = *(inp + j * 128 * NUM_RX_ANTENNAS + i);
+    for(size_t i = 0; i < ITERATION_MAX; ++i){
+        for(size_t j = 0; j < RANGEBINS; ++j){
+            outp[i * RANGEBINS + j] = *(inp + j * RANGEBINS + i);
         }
     }
 
