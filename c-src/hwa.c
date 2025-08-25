@@ -89,10 +89,10 @@ static HWA_ParamConfig HwaParamConfig[] =
 		.source =
         {  // TODO: get these from macros in some clever way
             .srcAddr = 0,
-            .srcAcnt = DOPPLER_COLUMNS-1,
+            .srcAcnt = CHIRPS_PER_FRAME - 1,
             .srcAIdx = 4,
-            .srcBcnt = DOPPLER_ROWS / 2,
-            .srcBIdx = DOPPLER_COLUMNS * 4,
+            .srcBcnt = 64,
+            .srcBIdx = CHIRPS_PER_FRAME * 4,
             .srcAcircShift = 0,
             .srcAcircShiftWrap = 0,
             .srcCircShiftWrap3 = HWA_FEATURE_BIT_DISABLE,
@@ -106,9 +106,9 @@ static HWA_ParamConfig HwaParamConfig[] =
 		.dest =
         {
             .dstAddr = 0x8000,
-            .dstAcnt = DOPPLER_COLUMNS -1,
+            .dstAcnt = CHIRPS_PER_FRAME -1,
             .dstAIdx = 4,
-            .dstBIdx = DOPPLER_COLUMNS * 4,
+            .dstBIdx = CHIRPS_PER_FRAME * 4,
             .dstRealComplex = HWA_SAMPLES_FORMAT_COMPLEX,
             .dstWidth = HWA_SAMPLES_WIDTH_16BIT,
             .dstSign = HWA_SAMPLES_SIGNED,
@@ -123,7 +123,7 @@ static HWA_ParamConfig HwaParamConfig[] =
             {
                 .mode2X = HWA_FEATURE_BIT_DISABLE,
                 .fftEn = HWA_FEATURE_BIT_ENABLE,
-                .fftSize = 9,   // size is 2^fftSize
+                .fftSize = 7,   // size is 2^fftSize
                 .butterflyScaling = 0,
                 .fftSize3xEn = HWA_FEATURE_BIT_DISABLE,
                 .windowEn = HWA_FEATURE_BIT_DISABLE,
