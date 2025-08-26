@@ -11,6 +11,16 @@
 // the HWA can fit 32k of input at once 
 #define ITERATION_MAX (RANGEBINS / 2)   
 
+// Store cfar result as a bit map to save on space
+// don't change the name of this, it will break the macros
+static uint32_t cfar[NUM_RX_ANTENNAS * CHIRPS_PER_FRAME * RANGEBINS];
+
+//TODO: don't use magic numbers here but this should work for now
+// Check if a specific data point was a detected object
+#define CHECK_POINT(rx, chirp, point) ( cfar[(rx * chirp * 4) + (point / 32)] & (1U << (point % 32)) )
+// Set a specific data point as a detected object
+#define SET_POINT(rx, chirp, point) ( cfar[(rx * chirp * 4) + (point / 32 )] |= (1U << (point % 32)) )
+
 // Input/output MUST be 4 byte aligned
 void calc_doppler_fft(HWA_Handle hwahandle, void *in, void *out){
     //TODO: change these to macros even though it's unlikely they'll change.
