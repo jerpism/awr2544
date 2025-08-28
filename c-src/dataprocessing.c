@@ -121,7 +121,7 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
         threshold[i] = (noise_level[i] + 1) * (a - 1);
         if (signal[i] > threshold[i]){
             printf("Detected at %d\r\n",i);
-            cfar_decteted[detect].chirp = chirp;
+            cfar_detected[detect].chirp = chirp;
             cfar_detected[detect].range = i;
             cfar_detected[detect].rx = rx;
             detect++;
