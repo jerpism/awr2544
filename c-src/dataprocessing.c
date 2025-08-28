@@ -12,6 +12,8 @@
 // the HWA can fit 32k of input at once 
 #define ITERATION_MAX (RANGEBINS / 2)   
 
+#define P_FA 0.1f
+
 
 // Extra byte free here if it's needed
 struct detected{
@@ -19,6 +21,7 @@ struct detected{
     uint8_t chirp;
     uint8_t range;
 };
+
 
 static struct detected cfar_detected[1024];
 static uint16_t absbuff[128];
@@ -81,7 +84,7 @@ void convolve_1d(const float* a, int n, const float* b, int m, float* output) {
 
 
 void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
-    float p_fa = 0.1;
+    float p_fa = P_FA;
     float threshold[128];
     int guard_len = 0;
     int train_len = 10;
@@ -91,11 +94,16 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
 
     float signal[128];
 
+    if(n > 128){
+        DebugP_logError("n is %u, more than 128\r\n",n);
+        return;
+    }
+
 
     calc_abs_vals((int16_t*)data, absbuff, n);
 
 
-    for(int i = 0; i < 128; ++i){
+    for(int i = 0; i < n; ++i){
         signal[i] = (float)(absbuff[i]);
     }
 
