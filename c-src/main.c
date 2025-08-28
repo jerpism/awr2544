@@ -133,7 +133,6 @@ static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
 #include "BIG.h"
 static uint8_t gSampleBuff[FRAME_DATASIZE] __attribute__((section(".bss.dss_l3")));
 static uint32_t gDopplerBuff[128][128] __attribute__((section(".bss.dss_l3")));
-static int16_t gAbsBuff[FRAME_DATASIZE / sizeof(int16_t)] __attribute__((section(".bss.dss_l3")));
 
 
 static inline void fail(void){
@@ -208,7 +207,7 @@ while(1){
         SemaphoreP_pend(&gFrameDoneSem, 500);
 
         MMWave_stop(gMmwHandle, &err);*/
-        printf("Doppler addr %#x\r\n",&gDopplerBuff);
+     /*   printf("Doppler addr %#x\r\n",&gDopplerBuff);
         printf("Test address %#x\r\n", &gFrameTest);
   
         calc_doppler_fft(gHwaHandle[0], (void*)gFrameTest, hwain);
@@ -225,7 +224,12 @@ while(1){
             doop[i+64*128] = *((uint32_t*)hwain+0x2000 +i);
         }      
         uint32_t *res = gDopplerBuff[23];
-        uart_dump_samples(res, 128);
+        uart_dump_samples(res, 128);*/
+        //void *data = &gFrameTest + (23*128*2);
+        void *data = gFrameTest + 14 * 128 * 2;
+        printf("%p\r\n", data);
+     //   while(1)__asm__("wfi");
+        dp_cfar(0,14,data, 128);
         while(1)__asm__("wfi");
 
      
@@ -335,6 +339,8 @@ static void init_task(void *args){
 
 
     DebugP_log("Synchronizing...\r\n");
+
+
 
     /* NOTE: According to the documentation a return value of 1
      * is supposed to mean synchronized, however MMWave_sync()
