@@ -104,7 +104,7 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
 
 
     for(int i = 0; i < n; ++i){
-        signal[i] = (float)(absbuff[i]);
+        signal[i] = ((float)(absbuff[i])) / 128.0f;
     }
 
 
@@ -115,6 +115,7 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
 
     float a = train_len * (pow(p_fa, -1.0 / train_len) - 1.0);
     printf("Threshold scale factor: %f\n", a);
+    // TODO: move this to file scope so new chirps don't override the last one
     int detect = 0;
     convolve_1d(signal, n, cfar_kernel, k_len, noise_level);
     for (int i = 0; i < n; ++i) {
@@ -128,9 +129,6 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
         }
     }
 
-   /* for(int i = 0; i < detect; ++i){
-        printf("%u\r\n",cfar_detected[i].range);
-    }*/
     while(1)__asm__("wfi");
 
 }
