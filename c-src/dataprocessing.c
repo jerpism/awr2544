@@ -2,24 +2,26 @@
 #include <stdlib.h>
 #include <math.h>
 #include <hwa.h>
+#include <stdio.h>
 #include <cfg.h>
 #include "ti_drivers_config.h"
 #define SQUARE_I16(x) (((int32_t)x) * ((int32_t)x))
 
 #define RANGEBINS (CFG_PROFILE_NUMADCSAMPLES / 2) 
-// For how many rangebins can we calculate the doppler at once
+// For how many rangebins can we calculate the doppler for at once
 // the HWA can fit 32k of input at once 
 #define ITERATION_MAX (RANGEBINS / 2)   
 
-// Store cfar result as a bit map to save on space
-// don't change the name of this, it will break the macros
-static uint32_t cfar[NUM_RX_ANTENNAS * CHIRPS_PER_FRAME * RANGEBINS];
 
-//TODO: don't use magic numbers here but this should work for now
-// Check if a specific data point was a detected object
-#define CHECK_POINT(rx, chirp, point) ( cfar[(rx * chirp * 4) + (point / 32)] & (1U << (point % 32)) )
-// Set a specific data point as a detected object
-#define SET_POINT(rx, chirp, point) ( cfar[(rx * chirp * 4) + (point / 32 )] |= (1U << (point % 32)) )
+// Extra byte free here if it's needed
+struct detected{
+    uint8_t rx;
+    uint8_t chirp;
+    uint8_t range;
+};
+
+static struct detected cfar_detected[1024];
+static uint16_t absbuff[128];
 
 // Input/output MUST be 4 byte aligned
 void calc_doppler_fft(HWA_Handle hwahandle, void *in, void *out){
@@ -39,14 +41,16 @@ void calc_doppler_fft(HWA_Handle hwahandle, void *in, void *out){
    hwa_process_dfft(hwahandle, NULL);
 }
 
+
 // N is the number of samples
 // as they are complex numbers, each one consists of 2 16 bit signed integers I and Q
-void calc_abs_vals(int16_t *in, int16_t *out, uint32_t n){
+void calc_abs_vals(int16_t *in, uint16_t *out, size_t n){
     for(int32_t i = 0; i < n; i++){
-        out[i] = (int16_t)sqrt(SQUARE_I16(in[i * 2]) + SQUARE_I16(in[i * 2 + 1]));
+        out[i] = (uint16_t)sqrt(SQUARE_I16(in[i * 2]) + SQUARE_I16(in[i * 2 + 1]));
 
     }
 }
+
 
 void reflect_pad(const float* input, float* padded, int n, int pad) {
     for (int i = 0; i < pad; ++i)
@@ -76,14 +80,25 @@ void convolve_1d(const float* a, int n, const float* b, int m, float* output) {
 }
 
 
-void cfar_main(void *data) {
-    float noise_level[N] = {0},  threshold[N];
-    int detected[N] = {0};
-
+void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
+    float p_fa = 0.1;
+    float threshold[128];
     int guard_len = 0;
     int train_len = 10;
     int k_len = 1 + 2*guard_len + 2*train_len;
     float cfar_kernel[k_len];
+    float noise_level[128];
+
+    float signal[128];
+
+
+    calc_abs_vals((int16_t*)data, absbuff, n);
+
+
+    for(int i = 0; i < 128; ++i){
+        signal[i] = (float)(absbuff[i]);
+    }
+
 
     for (int i = 0; i < k_len; ++i)
         cfar_kernel[i] = 1.0 / (2 * train_len);
@@ -92,13 +107,22 @@ void cfar_main(void *data) {
 
     float a = train_len * (pow(p_fa, -1.0 / train_len) - 1.0);
     printf("Threshold scale factor: %f\n", a);
-
-    convolve_1d(signal, N, cfar_kernel, k_len, noise_level);
-    for (int i = 0; i < N; ++i) {
+    int detect = 0;
+    convolve_1d(signal, n, cfar_kernel, k_len, noise_level);
+    for (int i = 0; i < n; ++i) {
         threshold[i] = (noise_level[i] + 1) * (a - 1);
-        if (signal[i] > threshold[i])
+        if (signal[i] > threshold[i]){
             printf("Detected at %d\r\n",i);
-            detected[i] = 1;
+            cfar_decteted[detect].chirp = chirp;
+            cfar_detected[detect].range = i;
+            cfar_detected[detect].rx = rx;
+            detect++;
+        }
     }
+
+   /* for(int i = 0; i < detect; ++i){
+        printf("%u\r\n",cfar_detected[i].range);
+    }*/
+    while(1)__asm__("wfi");
 
 }
