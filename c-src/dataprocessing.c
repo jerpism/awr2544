@@ -15,15 +15,29 @@
 #define P_FA 0.1f
 
 
-// Extra byte free here if it's needed
-struct detected{
+// This will be padded to 8 bytes
+// so there's an extra 3 bytes to play around with if required
+// also possible to turn this into a bitfield since we realistically won't have
+// more than 128 range/doppler bins
+struct detected_point{
     uint8_t rx;
     uint8_t chirp;
-    uint8_t range;
+    uint8_t rbin;
+    uint8_t dbin;
+    uint8_t abin;
 };
 
+static size_t detected_count = 0;
 
-static struct detected cfar_detected[1024];
+// range detections for [rx][chirp][rbins]
+// this assumes that no more than 32 objects are detected 
+// TODO: honestly, figure out what the heck is the best way to do this whole thing
+// avoiding dynamic memory management would be great 
+// but it's hard to say that simply walking a linked list wouldn't be nice
+// on the other hand, we're only using 256k for the range data so there is a fair amount of memory to play with
+// even assuming every range point and velocity is a detection (extremely unlikely)
+static uint8_t range_detected[4][128][128];
+static struct detected_point cfar_detected[8192];
 static uint16_t absbuff[128];
 
 // Input/output MUST be 4 byte aligned
@@ -83,7 +97,8 @@ void convolve_1d(const float* a, int n, const float* b, int m, float* output) {
 }
 
 
-void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
+// This is only really set up to deal with n up to 128
+void dp_cfar(uint8_t rx, uint8_t chirp, void *data, uint8_t n) {
     float p_fa = P_FA;
     float threshold[128];
     int guard_len = 0;
@@ -114,21 +129,38 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, size_t n) {
         cfar_kernel[i] = 0;
 
     float a = train_len * (pow(p_fa, -1.0 / train_len) - 1.0);
-    printf("Threshold scale factor: %f\n", a);
-    // TODO: move this to file scope so new chirps don't override the last one
-    int detect = 0;
     convolve_1d(signal, n, cfar_kernel, k_len, noise_level);
+    int detected = 0;
     for (int i = 0; i < n; ++i) {
         threshold[i] = (noise_level[i] + 1) * (a - 1);
         if (signal[i] > threshold[i]){
-            printf("Detected at %d\r\n",i);
-            cfar_detected[detect].chirp = chirp;
-            cfar_detected[detect].range = i;
-            cfar_detected[detect].rx = rx;
-            detect++;
+            range_detected[rx][chirp][detected] = i;
+            detected++;
+        }
+    }
+
+}
+
+
+// data is a pointer to the already processed range data in DSS_L3
+// rx is the number of receivers enabled
+// chirps is the number of chirps (and thus dopper bins) 
+// rbins is the number of rangebins
+void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
+    // Reset detected counter
+    detected_count = 0;
+
+    // First, calculate the CFAR result for ranges
+    // NOTE: it might faster to swap this around to i = chirp and j = rx
+    // so we can go through data without jumping around (might be better for cache?)
+    // It could also be advantageous if we want to "vote" on detections
+    // e.g. check if the same chirp's rbin was detected on all 4 or a majority to count it
+    for(uint8_t i = 0; i < rx_cnt; ++i){
+        for(uint8_t j = 0; j < chirps; ++j){
+            uint8_t *dp = data + (i * rbins * CPLX_SAMPLE_SIZE) + (j * NUM_RX_ANTENNAS * rbins * CPLX_SAMPLE_SIZE);
+            dp_cfar(i, j, (void*)dp, rbins);
         }
     }
 
     while(1)__asm__("wfi");
-
 }

@@ -209,7 +209,8 @@ while(1){
         SemaphoreP_pend(&gFrameDoneSem, 500);
 
         MMWave_stop(gMmwHandle, &err);*/
-     
+
+        process_data((void*)&gFrameTest, 1, CHIRPS_PER_FRAME, CFG_PROFILE_NUMADCSAMPLES / 2);
 
         while(1)__asm__("wfi");
 
