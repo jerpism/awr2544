@@ -209,30 +209,8 @@ while(1){
         SemaphoreP_pend(&gFrameDoneSem, 500);
 
         MMWave_stop(gMmwHandle, &err);*/
-        printf("Doppler addr %#x\r\n",&gDopplerBuff);
-        printf("Test address %#x\r\n", &gFrameTest);
-  
-        calc_doppler_fft(gHwaHandle[0], (void*)gFrameTest, hwain);
-        ClockP_usleep(50000);
-        uint32_t *doop = (uint32_t*)gDopplerBuff;
-        for(size_t i = 0; i < 64*128; ++i){
-            doop[i] = *((uint32_t*)hwain+0x2000 + i);
-        }
+     
 
-        calc_doppler_fft(gHwaHandle[0], (void*)gFrameTest + 0x4000, hwain);
-        ClockP_usleep(50000);
- 
-        for(size_t i = 0; i < 64*128; ++i){
-            doop[i+64*128] = *((uint32_t*)hwain+0x2000 +i);
-        }      
-        uint32_t *res = gDopplerBuff[23];
-        uart_dump_samples(res, 128);
-        
-        //void *data = &gFrameTest + (23*128*2);
-        void *data = gFrameTest + 14 * 128 * 2;
-        printf("%p\r\n", data);
-     //   while(1)__asm__("wfi");
-        dp_cfar(0,14,data, 128);
         while(1)__asm__("wfi");
 
      
