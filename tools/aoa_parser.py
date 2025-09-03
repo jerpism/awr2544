@@ -23,6 +23,7 @@ framecounter=0
 pktbuf = []
 
 def unpackPktBuf(buf):
+
     rx12_b = buf[::2] #rx12_b len: 128, type: <class 'list'>, [0] type: <class 'bytes'>
     rx34_b = buf[1::2]
 
@@ -56,22 +57,23 @@ def unpackPktBuf(buf):
 
 def doppler_fft(frame,rangebin):
 
-    doppler_data = np.zeros((4,len(frame[0])),dtype=np.complex128)
-    for i in range(len(doppler_data[0])):
+    doppler_data = np.zeros((len(frame),len(frame[0])),dtype=np.complex128)
+    for i in range(len(frame[0])):
         doppler_data[0][i] = frame[0][i][rangebin]
         doppler_data[1][i] = frame[1][i][rangebin]
         doppler_data[2][i] = frame[2][i][rangebin]
         doppler_data[3][i] = frame[3][i][rangebin]
 
-    doppler_res = np.zeros((4,len(frame[0])),dtype=np.complex128)
+    doppler_res = np.zeros((len(frame),len(frame[0])),dtype=np.complex128)
     for i in range(len(doppler_res)):
         doppler_res[i] = np.fft.fftshift(np.fft.fft(doppler_data[i]))
 
     return doppler_res
 
 
-def aoa_fft(frame,vel_bin):
-    doppler = doppler_fft(frame,eval_range_bin_num)
+def aoa_fft(frame,vel_bin,range_bin):
+
+    doppler = doppler_fft(frame,range_bin)
     aoa_data = np.zeros((len(doppler)),dtype=np.complex128)
 
     for i in range(len(doppler)):
@@ -83,8 +85,21 @@ def aoa_fft(frame,vel_bin):
 
 
 
+def rearrange_aoa(aoa):
+    # this is needed because MUSIC needs the physical layout of the antennas.
+    # there's probably a smarter way of doing this, but this works
+    aoa_temp = aoa
+    aoa[0] = aoa_temp[3]
+    aoa[1] = aoa_temp[0]
+    aoa[2] = aoa_temp[1]
+    aoa[3] = aoa_temp[2]
+
+    return aoa
+
+
+
 def music_single_snapshot(x, antenna_positions, wavelength, scan_angles_deg):
-    M = len(x)  # Number of antennas
+
     theta_scan = np.deg2rad(scan_angles_deg)
 
     # Covariance matrix from single snapshot
@@ -144,7 +159,7 @@ for ts, pkt in dpkt.pcapng.Reader(open(filename,'rb')):
                 if framecounter == eval_frame_num:
 
                     dopp_spec = doppler_fft(frame,eval_range_bin_num)
-                    aoa_spec = aoa_fft(frame,eval_vel_bin_num)
+                    aoa_spec_1chirp = aoa_fft(frame,eval_vel_bin_num,eval_range_bin_num)
 
                     # Constants
                     wavelength = 3e8 / 77e9  # ~0.003896 m
@@ -153,13 +168,14 @@ for ts, pkt in dpkt.pcapng.Reader(open(filename,'rb')):
                     antenna_positions = np.array([0, 1, 3.5, 4.5]) * wavelength  # meters
 
                     # Example snapshot from rx4, rx1, rx2, rx3 (same order as positions)
-                    x = aoa_spec
+                    # aoa_fft returns data held in aoa_spec in rx1/2/3/4 order, so it must be rearranged
+                    aoa_spec_1chirp = rearrange_aoa(aoa_spec_1chirp)
 
                     # Angle scan range
                     angles_deg = np.linspace(-90, 90, 361)
 
                     # Run MUSIC
-                    angles, spectrum_dB = music_single_snapshot(x, antenna_positions, wavelength, angles_deg)
+                    angles, spectrum_dB = music_single_snapshot(aoa_spec_1chirp, antenna_positions, wavelength, angles_deg)
 
                     plt.figure(figsize=(10, 5))
                     plt.plot(angles, spectrum_dB)
