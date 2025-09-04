@@ -107,7 +107,7 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, uint8_t n) {
 
 
     for(int i = 0; i < n; ++i){
-        signal[i] = ((float)(absbuff[i])) / 128.0f;
+        signal[i] = ((float)(absbuff[i])) / 65535.0f;
     }
 
 
