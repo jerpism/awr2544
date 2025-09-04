@@ -27,17 +27,10 @@ struct detected_point{
     uint8_t abin;
 };
 
-static size_t detected_count = 0;
 
-// range detections for [rx][chirp][rbins]
-// this assumes that no more than 32 objects are detected 
-// TODO: honestly, figure out what the heck is the best way to do this whole thing
-// avoiding dynamic memory management would be great 
-// but it's hard to say that simply walking a linked list wouldn't be nice
-// on the other hand, we're only using 256k for the range data so there is a fair amount of memory to play with
-// even assuming every range point and velocity is a detection (extremely unlikely)
-static uint8_t range_detected[4][128][128];
-static struct detected_point cfar_detected[8192];
+// range detections for [rx][rangebin]
+// the counter for each rangebin is incremented if the CFAR result for a chirp detects something at it 
+static uint8_t range_detected[4][128];
 static uint16_t absbuff[128];
 
 // Input/output MUST be 4 byte aligned
@@ -130,12 +123,10 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, uint8_t n) {
 
     float a = train_len * (pow(p_fa, -1.0 / train_len) - 1.0);
     convolve_1d(signal, n, cfar_kernel, k_len, noise_level);
-    int detected = 0;
     for (int i = 0; i < n; ++i) {
         threshold[i] = (noise_level[i] + 1) * (a - 1);
         if (signal[i] > threshold[i]){
-            range_detected[rx][chirp][detected] = i;
-            detected++;
+            range_detected[rx][i]++;
         }
     }
 
@@ -147,8 +138,8 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, uint8_t n) {
 // chirps is the number of chirps (and thus dopper bins) 
 // rbins is the number of rangebins
 void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
-    // Reset detected counter
-    detected_count = 0;
+    // Reset detections
+    memset(range_detected, 0, sizeof(range_detected));
 
     // First, calculate the CFAR result for ranges
     // NOTE: it might faster to swap this around to i = chirp and j = rx
@@ -160,6 +151,10 @@ void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
             uint8_t *dp = data + (i * rbins * CPLX_SAMPLE_SIZE) + (j * NUM_RX_ANTENNAS * rbins * CPLX_SAMPLE_SIZE);
             dp_cfar(i, j, (void*)dp, rbins);
         }
+    }
+
+    for(int i = 0; i < 128; ++i){
+        printf("%d: %u\r\n",i,range_detected[0][i]);
     }
 
     while(1)__asm__("wfi");
