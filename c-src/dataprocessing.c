@@ -4,7 +4,10 @@
 #include <hwa.h>
 #include <stdio.h>
 #include <cfg.h>
+#include <drivers/hwa.h>
 #include "ti_drivers_config.h"
+#include "ti_drivers_open_close.h"
+
 #define SQUARE_I16(x) (((int32_t)x) * ((int32_t)x))
 
 #define RANGEBINS (CFG_PROFILE_NUMADCSAMPLES / 2) 
@@ -32,6 +35,7 @@ struct detected_point{
 // the counter for each rangebin is incremented if the CFAR result for a chirp detects something at it 
 static uint8_t range_detected[4][128];
 static uint16_t absbuff[128];
+static uint32_t test[128];
 
 // Input/output MUST be 4 byte aligned
 void calc_doppler_fft(HWA_Handle hwahandle, void *in, void *out){
@@ -153,9 +157,31 @@ void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
         }
     }
 
-    for(int i = 0; i < 128; ++i){
+ /*   for(int i = 0; i < 128; ++i){
         printf("%d: %u\r\n",i,range_detected[0][i]);
+    }*/
+    DebugP_log("Done with cfar\r\n");
+
+    // Next, figure out which rangebins we should calculate the doppler for
+    // TODO: 20 is used as a placeholder value for threshold here, this can and should be changed
+    // TODO: add handling for 4 rx here
+    uint32_t *hwain = (uint32_t*)hwa_getaddr(gHwaHandle[0]);
+    uint32_t *frame = (uint32_t*)data;
+    uint8_t threshold = 20;
+    uint8_t cnt = 0;
+    for(int i = 0; i < 128; ++i){
+        if(range_detected[0][i] < threshold){
+            continue;
+        }
+
+        // Copy the data for detected stuff to hwa input
+        // TODO: clean this up with macros 
+        for(int j = 0; j < 128; ++j){
+            *(hwain + (cnt * 128) + j) =  *(frame + i + (j * 1 * 128));
+        }
+        cnt++;
     }
 
+    printf("Doppler count is %u\r\n",cnt);
     while(1)__asm__("wfi");
 }
