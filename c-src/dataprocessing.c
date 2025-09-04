@@ -39,20 +39,7 @@ static uint32_t test[128];
 
 // Input/output MUST be 4 byte aligned
 void calc_doppler_fft(HWA_Handle hwahandle, void *in, void *out){
-    //TODO: change these to macros even though it's unlikely they'll change.
-    //Also implement it for all receivers and make it transfer the other half
 
-    uint32_t *inp = (uint32_t*)in;
-    uint32_t *outp = (uint32_t*)out;
-
-    for(size_t i = 0; i < ITERATION_MAX; ++i){
-        for(size_t j = 0; j < RANGEBINS; ++j){
-            outp[i * RANGEBINS + j] = *(inp + j * RANGEBINS + i);
-        }
-    }
-
-
-   hwa_process_dfft(hwahandle, NULL);
 }
 
 
@@ -183,5 +170,9 @@ void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
     }
 
     printf("Doppler count is %u\r\n",cnt);
+
+    // Then calculate doppler results 
+    hwa_process_dfft(gHwaHandle[0], NULL, cnt);
+
     while(1)__asm__("wfi");
 }
