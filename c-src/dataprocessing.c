@@ -17,6 +17,9 @@
 
 #define P_FA 0.1f
 
+// TOOD: REMOVE THIS ONCE IT'S UNUSED
+void uart_dump_samples(void *buff, size_t n);
+
 
 // This will be padded to 8 bytes
 // so there's an extra 3 bytes to play around with if required
@@ -173,6 +176,10 @@ void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
 
     // Then calculate doppler results 
     hwa_process_dfft(gHwaHandle[0], NULL, cnt);
+
+    void *hwaout = hwain + 0x8000 / sizeof(uint32_t);
+    hwaout = hwaout + 4 * 128 * 4;
+    uart_dump_samples(hwaout, 128);
 
     while(1)__asm__("wfi");
 }
