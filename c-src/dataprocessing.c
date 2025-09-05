@@ -10,15 +10,11 @@
 #include "ti_drivers_open_close.h"
 
 #define SQUARE_I16(x) (((int32_t)x) * ((int32_t)x))
+ 
 
-#define RANGEBINS (CFG_PROFILE_NUMADCSAMPLES / 2) 
-// For how many rangebins can we calculate the doppler for at once
-// the HWA can fit 32k of input at once 
-#define ITERATION_MAX (RANGEBINS / 2)   
+#define P_FA 0.05f
 
-#define P_FA 0.1f
-
-// TOOD: REMOVE THIS ONCE IT'S UNUSED
+// TODO: REMOVE THIS ONCE IT'S UNUSED
 void uart_dump_samples(void *buff, size_t n);
 
 
@@ -107,7 +103,7 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, uint8_t n) {
 
 
     for(int i = 0; i < n; ++i){
-        signal[i] = ((float)(absbuff[i])) / 65535.0f;
+        signal[i] = ((float)(absbuff[i])) ;// 512.0f;
     }
 
 
