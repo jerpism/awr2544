@@ -12,7 +12,7 @@
 #define SQUARE_I16(x) (((int32_t)x) * ((int32_t)x))
  
 
-#define P_FA 0.05f
+#define P_FA 0.09f
 
 // TODO: REMOVE THIS ONCE IT'S UNUSED
 void uart_dump_samples(void *buff, size_t n);
@@ -175,7 +175,7 @@ void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
     hwa_process_dfft(gHwaHandle[0], NULL, cnt);
 
     void *hwaout = hwain + 0x8000 / sizeof(uint32_t);
-    hwaout = hwaout + 4 * 128 * 4;
+    hwaout = hwaout + 2 * 128 * 4;
     uart_dump_samples(hwaout, 128);
 
     while(1)__asm__("wfi");
