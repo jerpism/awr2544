@@ -141,16 +141,12 @@ void process_data(int16reim_t *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbi
         }
     }
 
- /*   for(int i = 0; i < 128; ++i){
-        printf("%d: %u\r\n",i,range_detected[0][i]);
-    }*/
     DebugP_log("Done with cfar\r\n");
 
     // Next, figure out which rangebins we should calculate the doppler for
     // TODO: 20 is used as a placeholder value for threshold here, this can and should be changed
     // TODO: add handling for 4 rx here
-    uint32_t *hwain = (uint32_t*)hwa_getaddr(gHwaHandle[0]);
-    uint32_t *frame = (uint32_t*)data;
+    int16reim_t *hwain = (int16reim_t*)hwa_getaddr(gHwaHandle[0]);
     uint8_t threshold = 20;
     uint8_t cnt = 0;
     for(int i = 0; i < 128; ++i){
@@ -159,9 +155,8 @@ void process_data(int16reim_t *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbi
         }
 
         // Copy the data for detected stuff to hwa input
-        // TODO: clean this up with macros 
-        for(int j = 0; j < 128; ++j){
-            *(hwain + (cnt * 128) + j) =  *(frame + i + (j * 1 * 128));
+        for(int j = 0; j < CHIRPS_PER_FRAME; ++j){
+            *(hwain + (cnt * CHIRPS_PER_FRAME) + j) =  *(data + i + (j * 1 * CHIRPS_PER_FRAME));
         }
         cnt++;
     }
@@ -172,7 +167,7 @@ void process_data(int16reim_t *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbi
     hwa_process_dfft(gHwaHandle[0], NULL, cnt);
 
     void *hwaout = hwain + 0x8000 / sizeof(uint32_t);
-    hwaout = hwaout + 2 * 128 * 4;
+    hwaout = hwaout + 1 * 128 * 4;
     uart_dump_samples(hwaout, 128);
 
     while(1)__asm__("wfi");
