@@ -149,7 +149,7 @@ void process_data(int16reim_t *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbi
     int16reim_t *hwain = (int16reim_t*)hwa_getaddr(gHwaHandle[0]);
     uint8_t threshold = 20;
     uint8_t cnt = 0;
-    for(int i = 0; i < 128; ++i){
+    for(int i = 0; i < rbins; ++i){
         if(range_detected[0][i] < threshold){
             continue;
         }
