@@ -64,6 +64,7 @@
 #include <hwa.h>
 #include <network.h>
 #include <dataprocessing.h>
+#include <types.h>
 
 extern void uart_dump_samples(void *buff, size_t n);
 
@@ -131,8 +132,8 @@ SemaphoreP_Object gFrameDoneSem;
 volatile bool gState = 0; /* Tracks the current (intended) state of the RSS */
 static uint32_t gPushButtonBaseAddr = GPIO_PUSH_BUTTON_BASE_ADDR;
 #include "BIG.h"
+
 static uint8_t gSampleBuff[FRAME_DATASIZE] __attribute__((section(".bss.dss_l3")));
-static uint32_t gDopplerBuff[128][128] __attribute__((section(".bss.dss_l3")));
 
 
 static inline void fail(void){
@@ -210,7 +211,7 @@ while(1){
 
         MMWave_stop(gMmwHandle, &err);*/
 
-        process_data((void*)&gFrameTest, 1, CHIRPS_PER_FRAME, CFG_PROFILE_NUMADCSAMPLES / 2);
+        process_data(&gFrameTest, 1, CHIRPS_PER_FRAME, CFG_PROFILE_NUMADCSAMPLES / 2);
 
         while(1)__asm__("wfi");
 

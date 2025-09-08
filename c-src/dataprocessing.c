@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <cfg.h>
 #include <drivers/hwa.h>
+#include <types.h>
 #include "ti_drivers_config.h"
 #include "ti_drivers_open_close.h"
 
@@ -43,12 +44,9 @@ void calc_doppler_fft(HWA_Handle hwahandle, void *in, void *out){
 }
 
 
-// N is the number of samples
-// as they are complex numbers, each one consists of 2 16 bit signed integers I and Q
-void calc_abs_vals(int16_t *in, uint16_t *out, size_t n){
-    for(int32_t i = 0; i < n; i++){
-        out[i] = (uint16_t)sqrt(SQUARE_I16(in[i * 2]) + SQUARE_I16(in[i * 2 + 1]));
-
+void calc_abs_vals(int16reim_t *in, uint16_t *out, size_t n){
+    for(size_t i = 0; i < n; i++){
+        out[i] = (uint16_t)sqrt(SQUARE_I16(in[i].re) + SQUARE_I16(in[i].im));
     }
 }
 
@@ -82,7 +80,7 @@ void convolve_1d(const float* a, int n, const float* b, int m, float* output) {
 
 
 // This is only really set up to deal with n up to 128
-void dp_cfar(uint8_t rx, uint8_t chirp, void *data, uint8_t n) {
+void dp_cfar(uint8_t rx, uint8_t chirp, int16reim_t *data, uint8_t n) {
     float p_fa = P_FA;
     float threshold[128];
     int guard_len = 0;
@@ -99,13 +97,12 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, uint8_t n) {
     }
 
 
-    calc_abs_vals((int16_t*)data, absbuff, n);
+    calc_abs_vals(data, absbuff, n);
 
 
     for(int i = 0; i < n; ++i){
-        signal[i] = ((float)(absbuff[i])) ;// 512.0f;
+        signal[i] = ((float)(absbuff[i]));
     }
-
 
     for (int i = 0; i < k_len; ++i)
         cfar_kernel[i] = 1.0 / (2 * train_len);
@@ -128,7 +125,7 @@ void dp_cfar(uint8_t rx, uint8_t chirp, void *data, uint8_t n) {
 // rx is the number of receivers enabled
 // chirps is the number of chirps (and thus dopper bins) 
 // rbins is the number of rangebins
-void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
+void process_data(int16reim_t *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
     // Reset detections
     memset(range_detected, 0, sizeof(range_detected));
 
@@ -139,8 +136,8 @@ void process_data(void *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
     // e.g. check if the same chirp's rbin was detected on all 4 or a majority to count it
     for(uint8_t i = 0; i < rx_cnt; ++i){
         for(uint8_t j = 0; j < chirps; ++j){
-            uint8_t *dp = data + (i * rbins * CPLX_SAMPLE_SIZE) + (j * NUM_RX_ANTENNAS * rbins * CPLX_SAMPLE_SIZE);
-            dp_cfar(i, j, (void*)dp, rbins);
+            int16reim_t *dp = data + (i * rbins) + (j * NUM_RX_ANTENNAS * rbins);
+            dp_cfar(i, j, dp, rbins);
         }
     }
 
