@@ -83,7 +83,7 @@ int32_t mmw_open(MMWave_Handle handle, int32_t *err){
     openCfg.laneEnCfg.laneEn = 0b1;
 
     openCfg.chCfg.rxChannelEn = CFG_OPEN_CHCONF_RXEN_BMASK;
-    openCfg.chCfg.txChannelEn = 0b1;
+    openCfg.chCfg.txChannelEn = 0b11;
 
     openCfg.chCfg.cascading = 0;
     openCfg.chCfg.cascadingPinoutCfg = 0;
@@ -134,7 +134,7 @@ MMWave_ChirpHandle mmw_add_chirp(MMWave_ProfileHandle profile, int32_t *err){
     chirpCfg.freqSlopeVar = 0;
     chirpCfg.idleTimeVar = 0;
     chirpCfg.adcStartTimeVar = 0;
-    chirpCfg.txEnable |= 0b0001;
+    chirpCfg.txEnable |= 0b0011;
 
     return MMWave_addChirp(profile, &chirpCfg, err);
 }
