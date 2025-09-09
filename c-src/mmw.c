@@ -148,17 +148,24 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, int32_t *err){
     chirpCfg.freqSlopeVar = 0;
     chirpCfg.idleTimeVar = 0;
     chirpCfg.adcStartTimeVar = 0;
-    uint8_t txmask = 0b0001;
-    for(int i = 0; i < 2; ++i){
-        chirpCfg.chirpEndIdx = i;
-        chirpCfg.chirpStartIdx = i;
-        chirpCfg.txEnable = 0b0011;
-        MMWave_ChirpHandle chirp = MMWave_addChirp(profile, &chirpCfg,err);
-        if(chirp == NULL){
-            return -1;
-        }
-      //  txmask = (txmask << 1U);
+
+    chirpCfg.chirpEndIdx = 0;
+    chirpCfg.chirpStartIdx = 0;
+    chirpCfg.txEnable = 0b0011;
+    MMWave_ChirpHandle chirp = MMWave_addChirp(profile, &chirpCfg,err);
+    if(chirp == NULL){
+        return -1;
     }
+
+
+    chirpCfg.chirpEndIdx = 1;
+    chirpCfg.chirpStartIdx = 1;
+    chirpCfg.txEnable = 0b0011;
+    chirp = MMWave_addChirp(profile, &chirpCfg,err);
+    if(chirp == NULL){
+        return -1;
+    }
+
     return 0;
 }
 
