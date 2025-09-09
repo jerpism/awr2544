@@ -188,7 +188,7 @@ static void main_task(void *args){
     HwiP_enable();
 while(1){
     ClockP_usleep(5000);
-   // while(gState){
+    while(gState){
         // This might be unnecessary but we have encountered situations
         // in which the system ends up locked with interrupts seemingly disabled
         // so make sure they are re-enabled at the start of each frame 
@@ -198,7 +198,7 @@ while(1){
         HWA_enable(gHwaHandle[0], 1U);
 
 
-/*        mmw_start(gMmwHandle, &err);
+        mmw_start(gMmwHandle, &err);
 
         // Make sure wait ticks is not set to SystemP_WAIT_FOREVER
         // At times the device seems to end up in a deadlock forever looping in the idle task
@@ -207,23 +207,20 @@ while(1){
         // seems to resume normally afterwards
         SemaphoreP_pend(&gFrameDoneSem, 500);
 
-        MMWave_stop(gMmwHandle, &err);*/
+        MMWave_stop(gMmwHandle, &err);
 
-        process_data(&gFrameTest, 1, CHIRPS_PER_FRAME, CFG_PROFILE_NUMADCSAMPLES / 2);
-
-        while(1)__asm__("wfi");
+     //   process_data(&gFrameTest, 1, CHIRPS_PER_FRAME, CFG_PROFILE_NUMADCSAMPLES / 2);
 
      
-    /*    udp_send_data((void*)&header, 4);
+        udp_send_data((void*)&header, 4);
         for(size_t i = 0; i < UDP_PKT_CNT; ++i){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
         }
         udp_send_data((void*)&footer, 4);
 
-        */
 
 
-   // }
+    }
 }
 
     while(1)__asm__("wfi");
@@ -262,7 +259,7 @@ static void init_task(void *args){
 
 
     DebugP_log("Init network...\r\n");
-   // network_init(NULL);
+    network_init(NULL);
     DebugP_log("Done.\r\n");
 
 

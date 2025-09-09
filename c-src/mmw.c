@@ -203,7 +203,7 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 2000000;
     ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.triggerSelect = 1;
-    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 128 / 2;
+    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = CHIRPS_PER_FRAME / 2; //TODO: get this in some clever way
 
     //TODO: make this handle more than 2 tx
     bpmCfg.chirpEndIdx = 0;
@@ -219,7 +219,7 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     bpmCfg.chirpStartIdx = 1;
     bpmCfg.constBpmVal |= (1U << 3); // And set chirp 1 as +1/-1
     bpm = MMWave_addBpmChirp(handle, &bpmCfg, err);
-    
+
     if(bpm == NULL){
         return -1;
     }
