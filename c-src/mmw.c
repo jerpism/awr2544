@@ -151,6 +151,7 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, rlUInt16_t profileid, int32
     rlChirpCfg_t chirpCfg;
     memset(&chirpCfg, 0, sizeof(chirpCfg));
 
+
     chirpCfg.profileId = profileid;
     chirpCfg.startFreqVar = 0;
     chirpCfg.freqSlopeVar = 0;
@@ -174,6 +175,9 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, rlUInt16_t profileid, int32
         return -1;
     }
 
+
+   
+
     return 0;
 }
 
@@ -181,8 +185,10 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, rlUInt16_t profileid, int32
 int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MMWAVE_MAX_PROFILE], int32_t *err){
     int32_t ret = 0;
     MMWave_CtrlCfg ctrlCfg;
-
+    rlBpmChirpCfg_t bpmCfg;
+    memset(&bpmCfg, 0, sizeof(bpmCfg));
     memset(&ctrlCfg, 0, sizeof(ctrlCfg));
+
     ctrlCfg.dfeDataOutputMode = MMWave_DFEDataOutputMode_FRAME;
     ctrlCfg.numOfPhaseShiftChirps[0] = 0;
     ctrlCfg.u.frameCfg[0].profileHandle[0] = profiles[0];
@@ -198,6 +204,25 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.triggerSelect = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.numLoops = 128 / 2;
+
+    //TODO: make this handle more than 2 tx
+    bpmCfg.chirpEndIdx = 0;
+    bpmCfg.chirpStartIdx = 0;
+    bpmCfg.constBpmVal = 0; // Keep chirp 0 as +1/+1
+    MMWave_BpmChirpHandle bpm = MMWave_addBpmChirp(handle, &bpmCfg, err);
+
+    if(bpm == NULL){
+        return -1;
+    }
+
+    bpmCfg.chirpEndIdx = 1;
+    bpmCfg.chirpStartIdx = 1;
+    bpmCfg.constBpmVal |= (1U << 3); // And set chirp 1 as +1/-1
+    bpm = MMWave_addBpmChirp(handle, &bpmCfg, err);
+    
+    if(bpm == NULL){
+        return -1;
+    }
 
     ret = MMWave_config(handle, &ctrlCfg, err);
 
