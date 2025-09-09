@@ -355,8 +355,15 @@ static void init_task(void *args){
         fail();
     }
 
-    gMmwProfiles[0] = mmw_create_profile(gMmwHandle, &err);
-    ret = mmw_add_chirps(gMmwProfiles[0], &err);
+    gMmwProfiles[0] = mmw_create_profile(gMmwHandle, 0, &err);
+    gMmwProfiles[1] = mmw_create_profile(gMmwHandle, 1, &err);
+
+    ret = mmw_add_chirps(gMmwProfiles[0], 0, &err);
+    if(ret != 0){
+        DebugP_logError("Failed to add chirps\r\n");
+    }
+ 
+    ret = mmw_add_chirps(gMmwProfiles[1], 1, &err);
     if(ret != 0){
         DebugP_logError("Failed to add chirps\r\n");
     }

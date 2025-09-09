@@ -105,10 +105,10 @@ int32_t mmw_open(MMWave_Handle handle, int32_t *err){
 
 
 /* Pulls values from cfg.h */
-MMWave_ProfileHandle mmw_create_profile(MMWave_Handle handle, int32_t *err){
+MMWave_ProfileHandle mmw_create_profile(MMWave_Handle handle, rlUInt16_t id, int32_t *err){
     rlProfileCfg_t profileCfg;
     memset(&profileCfg, 0, sizeof(profileCfg));
-    profileCfg.profileId = CFG_PROFILE_PROFILEID;
+    profileCfg.profileId = id;
     profileCfg.pfCalLutUpdate |= 0b00;
     profileCfg.startFreqConst = CFG_PROFILE_STARTFREQCONST;
     profileCfg.idleTimeConst = CFG_PROFILE_IDLETIMECONST;         
@@ -119,6 +119,13 @@ MMWave_ProfileHandle mmw_create_profile(MMWave_Handle handle, int32_t *err){
     profileCfg.digOutSampleRate = CFG_PROFILE_DIGOUTSAMPLERATE;
     profileCfg.rxGain = CFG_PROFILE_RXGAIN;
     profileCfg.freqSlopeConst = CFG_PROFILE_FREQSLOPECONST;
+
+
+    // TODO: remove this idiocy
+    if(id == 1){
+        // Set Tx1 phaseshifter to 180 deg for profile[1]
+        profileCfg.txPhaseShifter |= (32U << 10);
+    }
 
     return MMWave_addProfile(handle, &profileCfg, err);
 }
@@ -139,11 +146,12 @@ MMWave_ChirpHandle mmw_add_chirp(MMWave_ProfileHandle profile, int32_t *err){
     return MMWave_addChirp(profile, &chirpCfg, err);
 }
 
-int32_t mmw_add_chirps(MMWave_ProfileHandle profile, int32_t *err){
+
+int32_t mmw_add_chirps(MMWave_ProfileHandle profile, rlUInt16_t profileid, int32_t *err){
     rlChirpCfg_t chirpCfg;
     memset(&chirpCfg, 0, sizeof(chirpCfg));
 
-    chirpCfg.profileId = 0;
+    chirpCfg.profileId = profileid;
     chirpCfg.startFreqVar = 0;
     chirpCfg.freqSlopeVar = 0;
     chirpCfg.idleTimeVar = 0;
@@ -151,7 +159,7 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, int32_t *err){
 
     chirpCfg.chirpEndIdx = 0;
     chirpCfg.chirpStartIdx = 0;
-    chirpCfg.txEnable = 0b0011;
+    chirpCfg.txEnable = 0b0001;
     MMWave_ChirpHandle chirp = MMWave_addChirp(profile, &chirpCfg,err);
     if(chirp == NULL){
         return -1;
@@ -160,7 +168,7 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, int32_t *err){
 
     chirpCfg.chirpEndIdx = 1;
     chirpCfg.chirpStartIdx = 1;
-    chirpCfg.txEnable = 0b0011;
+    chirpCfg.txEnable = 0b0010;
     chirp = MMWave_addChirp(profile, &chirpCfg,err);
     if(chirp == NULL){
         return -1;
@@ -169,7 +177,7 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, int32_t *err){
     return 0;
 }
 
-/* For now only supports configuring the first profile */
+
 int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MMWAVE_MAX_PROFILE], int32_t *err){
     int32_t ret = 0;
     MMWave_CtrlCfg ctrlCfg;
@@ -178,8 +186,9 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     ctrlCfg.dfeDataOutputMode = MMWave_DFEDataOutputMode_FRAME;
     ctrlCfg.numOfPhaseShiftChirps[0] = 0;
     ctrlCfg.u.frameCfg[0].profileHandle[0] = profiles[0];
+    ctrlCfg.u.frameCfg[0].profileHandle[1] = profiles[1];
 
-    for(int i = 1; i < MMWAVE_MAX_PROFILE; ++i){
+    for(int i = 2; i < MMWAVE_MAX_PROFILE; ++i){
         ctrlCfg.u.frameCfg[0].profileHandle[i] = NULL;
     }
 
