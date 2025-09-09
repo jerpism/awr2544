@@ -149,15 +149,15 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, int32_t *err){
     chirpCfg.idleTimeVar = 0;
     chirpCfg.adcStartTimeVar = 0;
     uint8_t txmask = 0b0001;
-    for(int i = 0; i < 4; ++i){
+    for(int i = 0; i < 2; ++i){
         chirpCfg.chirpEndIdx = i;
         chirpCfg.chirpStartIdx = i;
-        chirpCfg.txEnable = 0b0001;
+        chirpCfg.txEnable = 0b0011;
         MMWave_ChirpHandle chirp = MMWave_addChirp(profile, &chirpCfg,err);
         if(chirp == NULL){
             return -1;
         }
-        txmask = (txmask << 1U);
+      //  txmask = (txmask << 1U);
     }
     return 0;
 }
