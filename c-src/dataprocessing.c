@@ -155,8 +155,8 @@ void process_data(int16reim_t *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbi
         }
 
         // Copy the data for detected stuff to hwa input
-        for(int j = 0; j < CHIRPS_PER_FRAME; ++j){
-            *(hwain + (cnt * CHIRPS_PER_FRAME) + j) =  *(data + i + (j * 1 * CHIRPS_PER_FRAME));
+        for(int j = 0; j < chirps; ++j){
+            *(hwain + (cnt * chirps) + j) =  *(data + i + (j * 1 * chirps));
         }
         cnt++;
     }
