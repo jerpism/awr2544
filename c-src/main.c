@@ -166,8 +166,6 @@ static void frame_done(Edma_IntrHandle handle, void *args){
 
 
 static void exec_task(void *args){
-    //TODO: REMOVE THIS WHEN YOU WANT TO ACTUALLY MEASURE STUFF
-    vTaskDelete(NULL);
     int32_t err;
     while(1){
         MMWave_execute(gMmwHandle, &err);
@@ -262,7 +260,7 @@ static void init_task(void *args){
     DebugP_log("HWA address is %#x\r\n",hwaaddr);
     DebugP_log("Done.\r\n");
 
-/*
+
     DebugP_log("Init network...\r\n");
    // network_init(NULL);
     DebugP_log("Done.\r\n");
@@ -324,17 +322,17 @@ static void init_task(void *args){
     DebugP_log("Synchronizing...\r\n");
 
 
-*/
+
 
     /* NOTE: According to the documentation a return value of 1
      * is supposed to mean synchronized, however MMWave_sync()
      * will under no circumstances return a value of 1.
      * So unless this is changed/fixed in a later version
      * treat 0 as a success and != 0 (<0) as a failure */
- /*   while(MMWave_sync(gMmwHandle, &err) != 0);
+    while(MMWave_sync(gMmwHandle, &err) != 0);
 
     DebugP_log("Synced!\r\n");
-*/
+
     /* We must create a task that calls MMWave_exec at this point
      * otherwise the device will get stuck in an internal sync loop */
     gExecTask = xTaskCreateStatic(
@@ -349,7 +347,7 @@ static void init_task(void *args){
         gExecTaskStack, /*  pointer to stack base */
         &gExecTaskObj); /*  pointer to statically allocated task object memory */
     configASSERT(gExecTask != NULL);
-/*
+
     DebugP_log("Configuring mmw...\r\n");
     ret = mmw_open(gMmwHandle, &err);
     if(ret != 0){
@@ -371,7 +369,7 @@ static void init_task(void *args){
     }
 
     DebugP_log("Configured!\r\n");
-*/
+
 
     DebugP_log("Creating main task...\r\n");
     gMainTask = xTaskCreateStatic(
