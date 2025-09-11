@@ -209,7 +209,7 @@ while(1){
 
         MMWave_stop(gMmwHandle, &err);
 
-     //   process_data(&gFrameTest, 1, CHIRPS_PER_FRAME, CFG_PROFILE_NUMADCSAMPLES / 2);
+        //process_data(&gSampleBuff, 4, CHIRPS_PER_FRAME, CFG_PROFILE_NUMADCSAMPLES / 2);
 
      
         udp_send_data((void*)&header, 4);
@@ -217,9 +217,6 @@ while(1){
             udp_send_data((void*)(gSampleBuff + (i * UDP_BYTES_PER_PKT)), UDP_BYTES_PER_PKT);
         }
         udp_send_data((void*)&footer, 4);
-
-
-
     }
 }
 
