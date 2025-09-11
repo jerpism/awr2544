@@ -239,7 +239,7 @@ int32_t mmw_start(MMWave_Handle handle, int32_t *err){
     calibCfg.dfeDataOutputMode = MMWave_DFEDataOutputMode_FRAME;
     calibCfg.u.chirpCalibrationCfg.enableCalibration = 1;
     calibCfg.u.chirpCalibrationCfg.enablePeriodicity = 1;
-    calibCfg.u.chirpCalibrationCfg.periodicTimeInFrames = 0;
+    calibCfg.u.chirpCalibrationCfg.periodicTimeInFrames = 1;
     calibCfg.u.chirpCalibrationCfg.reportEn = 0;
 
     ret = MMWave_start(handle, &calibCfg, err);
