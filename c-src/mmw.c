@@ -7,6 +7,8 @@
 #include "ti_drivers_config.h"
 #include "ti_board_config.h"
 
+#include <stdio.h>
+
 /* Header file for configuration values */
 #include <cfg.h>
 
@@ -194,7 +196,7 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     ctrlCfg.u.frameCfg[0].profileHandle[0] = profiles[0];
     ctrlCfg.u.frameCfg[0].profileHandle[1] = profiles[1];
 
-    for(int i = 2; i < MMWAVE_MAX_PROFILE; ++i){
+    for(int i = 1; i < MMWAVE_MAX_PROFILE; ++i){
         ctrlCfg.u.frameCfg[0].profileHandle[i] = NULL;
     }
 
@@ -236,7 +238,7 @@ int32_t mmw_start(MMWave_Handle handle, int32_t *err){
     memset(&calibCfg, 0, sizeof(calibCfg));
     calibCfg.dfeDataOutputMode = MMWave_DFEDataOutputMode_FRAME;
     calibCfg.u.chirpCalibrationCfg.enableCalibration = 1;
-    calibCfg.u.chirpCalibrationCfg.enablePeriodicity = 0;
+    calibCfg.u.chirpCalibrationCfg.enablePeriodicity = 1;
     calibCfg.u.chirpCalibrationCfg.periodicTimeInFrames = 0;
     calibCfg.u.chirpCalibrationCfg.reportEn = 0;
 
