@@ -125,7 +125,7 @@ void dp_cfar(uint8_t rx, uint8_t chirp, int16reim_t *data, uint8_t n) {
 // rx is the number of receivers enabled
 // chirps is the number of chirps (and thus dopper bins) 
 // rbins is the number of rangebins
-void process_data(int16reim_t *data, uint8_t rx_cnt, uint8_t chirps, uint8_t rbins){
+void process_data(int16reim_t *data, uint8_t rx_cnt, uint16_t chirps, uint8_t rbins){
     // Reset detections
     memset(range_detected, 0, sizeof(range_detected));
 
