@@ -160,15 +160,18 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, rlUInt16_t profileid, int32
     chirpCfg.idleTimeVar = 0;
     chirpCfg.adcStartTimeVar = 0;
 
-    chirpCfg.chirpEndIdx = 0;
-    chirpCfg.chirpStartIdx = 0;
-    chirpCfg.txEnable = 0b0001;
-    MMWave_ChirpHandle chirp = MMWave_addChirp(profile, &chirpCfg,err);
-    if(chirp == NULL){
-        return -1;
+    for(int i = 0; i < 4; ++i){
+        chirpCfg.chirpEndIdx = i;
+        chirpCfg.chirpStartIdx = i;
+        chirpCfg.txEnable = 0b0001 << i;
+        MMWave_ChirpHandle chirp = MMWave_addChirp(profile, &chirpCfg,err);
+        if(chirp == NULL){
+            return -1;
+        }
+
     }
 
-
+/*
     chirpCfg.chirpEndIdx = 1;
     chirpCfg.chirpStartIdx = 1;
     chirpCfg.txEnable = 0b0010;
@@ -178,7 +181,7 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, rlUInt16_t profileid, int32
     }
 
 
-   
+   */
 
     return 0;
 }
@@ -205,10 +208,10 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 2000000;
     ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.triggerSelect = 1;
-    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = CHIRPS_PER_FRAME / 2; //TODO: get this in some clever way
+    ctrlCfg.u.frameCfg[0].frameCfg.numLoops = CHIRPS_PER_FRAME / 4; //TODO: get this in some clever way
 
     //TODO: make this handle more than 2 tx
-    bpmCfg.chirpEndIdx = 0;
+ /*   bpmCfg.chirpEndIdx = 0;
     bpmCfg.chirpStartIdx = 0;
     bpmCfg.constBpmVal = 0; // Keep chirp 0 as +1/+1
     MMWave_BpmChirpHandle bpm = MMWave_addBpmChirp(handle, &bpmCfg, err);
@@ -224,7 +227,7 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
 
     if(bpm == NULL){
         return -1;
-    }
+    }*/
 
     ret = MMWave_config(handle, &ctrlCfg, err);
 
