@@ -5,12 +5,10 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("fname", help="name of .pcap file to parse")
-parser.add_argument("frame_num", help="index of frame to evaluate with Doppler FFT")
-parser.add_argument("rangebin",help="index of range bin to evaluate with Doppler FFT")
+parser.add_argument("rangebin",help="index of range bin to evaluate with")
 args = parser.parse_args()
 
 filename=args.fname
-eval_frame_num = int(args.frame_num)
 eval_range_bin_num = int(args.rangebin)
 
 header = b"\x01\x02\x03\x04"
@@ -21,7 +19,8 @@ framecounter=0
 pktbuf = []
 
 plt.ion()
-plt.figure()
+fig, ax = plt.subplots()
+
 
 def unpackPktBuf(buf):
 
@@ -102,24 +101,14 @@ for ts, pkt in dpkt.pcapng.Reader(open(filename,'rb')):
                 aoa_vec = []
                 for i in range(len(mimo)):
                     aoa_vec.append(mimo[i][eval_range_bin_num])
-                
-                
-                plt.plot(np.abs(np.fft.fft(aoa_vec)))
-                plt.show()
-
-
-                '''
-                                if framecounter == eval_frame_num:
-                    mimo = frame_to_mimo(frame)
-
-                    aoa_vec = []
-                    for i in range(len(mimo)):
-                        aoa_vec.append(mimo[i][eval_range_bin_num])
-
-                    plt.figure()
-                    plt.plot(np.abs(np.fft.fft(aoa_vec)))
-                    plt.show()
-                '''
+                if(framecounter == 1):
+                    line, = ax.plot(np.abs(np.fft.fft(aoa_vec)))
+                    
+                line.set_ydata(np.abs(np.fft.fft(aoa_vec)))
+                ax.relim()
+                ax.autoscale_view()
+                fig.canvas.draw()
+                fig.canvas.flush_events()
 
                 pktbuf = []
                 chirpcounter = 0
