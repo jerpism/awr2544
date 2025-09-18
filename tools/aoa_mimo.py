@@ -20,6 +20,9 @@ chirpcounter=0
 framecounter=0
 pktbuf = []
 
+plt.ion()
+plt.figure()
+
 def unpackPktBuf(buf):
 
     rx12_b = buf[::2] #rx12_b len: 128, type: <class 'list'>, [0] type: <class 'bytes'>
@@ -95,7 +98,18 @@ for ts, pkt in dpkt.pcapng.Reader(open(filename,'rb')):
                 #print(f"pktbuf len: {len(pktbuf)}, pktbuf type: {type(pktbuf)}, pktbuf[0] type: {type(pktbuf[0])}")
                 #print(f"frame shape: {np.shape(frame)}, cell type: {type(frame[0][0][0])}, val: {frame[0][0][10]}")           
 
-                if framecounter == eval_frame_num:
+                mimo = frame_to_mimo(frame)
+                aoa_vec = []
+                for i in range(len(mimo)):
+                    aoa_vec.append(mimo[i][eval_range_bin_num])
+                
+                
+                plt.plot(np.abs(np.fft.fft(aoa_vec)))
+                plt.show()
+
+
+                '''
+                                if framecounter == eval_frame_num:
                     mimo = frame_to_mimo(frame)
 
                     aoa_vec = []
@@ -105,6 +119,7 @@ for ts, pkt in dpkt.pcapng.Reader(open(filename,'rb')):
                     plt.figure()
                     plt.plot(np.abs(np.fft.fft(aoa_vec)))
                     plt.show()
+                '''
 
                 pktbuf = []
                 chirpcounter = 0
