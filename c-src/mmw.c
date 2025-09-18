@@ -85,7 +85,7 @@ int32_t mmw_open(MMWave_Handle handle, int32_t *err){
     openCfg.laneEnCfg.laneEn = 0b1;
 
     openCfg.chCfg.rxChannelEn = CFG_OPEN_CHCONF_RXEN_BMASK;
-    openCfg.chCfg.txChannelEn = 0b11;
+    openCfg.chCfg.txChannelEn = 0b1111;
 
     openCfg.chCfg.cascading = 0;
     openCfg.chCfg.cascadingPinoutCfg = 0;
@@ -163,7 +163,7 @@ int32_t mmw_add_chirps(MMWave_ProfileHandle profile, rlUInt16_t profileid, int32
     for(int i = 0; i < 4; ++i){
         chirpCfg.chirpEndIdx = i;
         chirpCfg.chirpStartIdx = i;
-        chirpCfg.txEnable = 0b0001 << i;
+        chirpCfg.txEnable = (0b0001 << i);
         MMWave_ChirpHandle chirp = MMWave_addChirp(profile, &chirpCfg,err);
         if(chirp == NULL){
             return -1;
@@ -204,7 +204,7 @@ int32_t mmw_config(MMWave_Handle handle, MMWave_ProfileHandle profiles[static MM
     }
 
     ctrlCfg.u.frameCfg[0].frameCfg.chirpStartIdx = 0;
-    ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 1;
+    ctrlCfg.u.frameCfg[0].frameCfg.chirpEndIdx = 3;
     ctrlCfg.u.frameCfg[0].frameCfg.framePeriodicity = 2000000;
     ctrlCfg.u.frameCfg[0].frameCfg.numFrames = 1;
     ctrlCfg.u.frameCfg[0].frameCfg.triggerSelect = 1;

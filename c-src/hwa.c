@@ -89,10 +89,10 @@ static HWA_ParamConfig HwaParamConfig[] =
 		.source =
         {  // TODO: get these from macros in some clever way
             .srcAddr = 0,
-            .srcAcnt = 128 - 1,
+            .srcAcnt = 32 - 1,
             .srcAIdx = 4,
             .srcBcnt = 64,
-            .srcBIdx = 128 * 4,
+            .srcBIdx = 32 * 4,
             .srcAcircShift = 0,
             .srcAcircShiftWrap = 0,
             .srcCircShiftWrap3 = HWA_FEATURE_BIT_DISABLE,

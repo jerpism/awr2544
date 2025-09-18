@@ -147,11 +147,11 @@ void process_data(int16reim_t *data, uint8_t rx_cnt, uint16_t chirps, uint8_t rb
     // TODO: 20 is used as a placeholder value for threshold here, this can and should be changed
     // TODO: add handling for 4 rx here
     int16reim_t *hwain = (int16reim_t*)hwa_getaddr(gHwaHandle[0]);
-    uint8_t threshold = 20;
+    uint8_t threshold = 10;
     uint8_t cnt = 0;
 
     // TODO: actually make this work with multiple rx
-    for(int rx = 0; rx < rx_cnt; ++rx){
+  /*  for(int rx = 0; rx < rx_cnt; ++rx){
     for(int i = 0; i < rbins; ++i){
         if(range_detected[rx][i] < threshold){
             continue;
@@ -164,14 +164,16 @@ void process_data(int16reim_t *data, uint8_t rx_cnt, uint16_t chirps, uint8_t rb
         cnt++;
     }
     }
-    printf("Doppler count is %u\r\n",cnt);
+    printf("Doppler count is %u\r\n",cnt);*/
+    for(int i = 0; i < 1; ++i){
+        for(int j = 0; j < rbins; ++j){
+            if(range_detected[i][j] > 63)
+                printf("Rx:%d,rbin:%d\t %d\r\n",i,j,range_detected[i][j]);
+        }  
+    }
 
-    // Then calculate doppler results 
-    hwa_process_dfft(gHwaHandle[0], NULL, cnt);
+  
 
-    void *hwaout = hwain + 0x8000 / sizeof(uint32_t);
-    hwaout = hwaout + 1 * 128 * 4;
-    uart_dump_samples(hwaout, 128);
 
     while(1)__asm__("wfi");
 }
