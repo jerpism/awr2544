@@ -3,8 +3,13 @@
 #include <math.h>
 #include <time.h>
 
-#define N 400
+#define N 50 // Length of data
 #define PI 3.14159265358979323846
+
+//Testing data
+float signal[N] = {0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+// Scale factor for detection threshold
+float p_fa = 0.3; 
 
 // Generate random float in [0, 1)
 float randf() {
@@ -52,6 +57,11 @@ void convolve_1d(const float* a, int n, const float* b, int m, float* output) {
 
     free(a_padded);
 }
+
+int cfar_main() {
+    float noise_level[N] = {0},  threshold[N];
+    int detected[N] = {0};
+
 
 // Generate unique random indices
 void random_indices(int* out, int count, int max) {
@@ -130,15 +140,31 @@ int main() {
     }
 
     // Step 7: CFAR detection
+
     int guard_len = 0;
     int train_len = 10;
     int k_len = 1 + 2*guard_len + 2*train_len;
     float cfar_kernel[k_len];
+
     for (int i = 0; i < k_len; ++i)
         cfar_kernel[i] = 1.0 / (2 * train_len);
     for (int i = train_len; i < train_len + 2*guard_len + 1; ++i)
         cfar_kernel[i] = 0;
 
+    float a = train_len * (pow(p_fa, -1.0 / train_len) - 1.0);
+    printf("Threshold scale factor: %f\n", a);
+
+    convolve_1d(signal, N, cfar_kernel, k_len, noise_level);
+    for (int i = 0; i < N; ++i) {
+        threshold[i] = (noise_level[i] + 1) * (a - 1);
+        if (signal[i] > threshold[i])
+            printf("Detected at %d\r\n",i);
+            detected[i] = 1;
+    }
+
+    printf("Done.\n");
+    return 0;
+}
     float p_fa = 0.1;
     float a = train_len * (pow(p_fa, -1.0 / train_len) - 1.0);
     printf("Threshold scale factor: %f\n", a);

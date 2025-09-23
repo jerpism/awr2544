@@ -24,5 +24,8 @@
 #define UDP_BYTES_PER_PKT   1024
 #define UDP_PKT_CNT         (FRAME_DATASIZE / UDP_BYTES_PER_PKT)
 
+#define CPLX_SAMPLE_SIZE (sizeof(int16_t) * 2)
+
+
 
 #endif

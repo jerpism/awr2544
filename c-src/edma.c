@@ -15,10 +15,14 @@
 
 #include <edma.h>
 #include <hwa.h>
+#include <cfg.h>
 
 
 static Edma_IntrObject gIntrObjAdcHwa;
 static Edma_IntrObject gIntrObjHwaL3;
+static Edma_IntrObject gIntrObjDfftRows;
+static Edma_IntrObject gIntrObjDfftCols;
+
 
 static uint32_t gbaseaddr;
 static uint32_t ghwal3param;
@@ -49,7 +53,6 @@ void edma_configure_hwa_l3(EDMA_Handle handle, void *cb, void *dst, void *src, u
     uint32_t ch = 0;
     uint32_t tcc = 0;
     uint32_t param = 0;
-    uint32_t param2 = 0;
     int32_t ret = 0;
     uint8_t *srcp = (uint8_t*)src;
     uint8_t *dstp = (uint8_t*)dst;
